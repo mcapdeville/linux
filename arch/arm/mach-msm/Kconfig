@@ -373,6 +373,14 @@ config MACH_MSM7X27_FFA
 	help
 	  Support for the Qualcomm MSM7x27 FFA eval board.
 
+config MACH_MSM7X27_SWIFT
+	depends on ARCH_MSM7X27
+	depends on !MSM_STACKED_MEMORY
+	default y
+	bool "MSM7x27 SWIFT (LGE Optimus GT540)"
+	help
+	  Support for the LGE Optimus GT540 (swift) mobile phone.
+
 config MACH_MSM7X27A_RUMI3
         depends on ARCH_MSM7X27A
         depends on !MSM_STACKED_MEMORY
