@@ -126,12 +126,12 @@ static struct resource msm_fb_resources[] = {
 static int msm_fb_detect_panel(const char *name)
 {
 	int ret = -EPERM;
-/*
+
 	if (!strcmp(name, "mddi_swift"))
 		ret = 0;
 	else
 		ret = -ENODEV;
-*/
+
 	return ret;
 }
 

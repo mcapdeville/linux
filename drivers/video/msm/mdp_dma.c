@@ -49,6 +49,10 @@ uint32 mdp_total_vdopkts;
 extern u32 msm_fb_debug_enabled;
 extern struct workqueue_struct *mdp_dma_wq;
 
+#ifdef CONFIG_FB_MSM_MDDI_SWIFT
+extern void mddi_ss_driveric_innotek_position();
+#endif
+
 int vsync_start_y_adjust = 4;
 
 static void mdp_dma2_update_lcd(struct msm_fb_data_type *mfd)
@@ -70,6 +74,10 @@ static void mdp_dma2_update_lcd(struct msm_fb_data_type *mfd)
 
 	dma2_cfg_reg = DMA_PACK_ALIGN_LSB |
 		    DMA_OUT_SEL_AHB | DMA_IBUF_NONCONTIGUOUS;
+
+#ifdef CONFIG_FB_MSM_MDDI_SWIFT
+	mddi_ss_driveric_innotek_position();
+#endif
 
 #ifdef CONFIG_FB_MSM_MDP22
 	dma2_cfg_reg |= DMA_PACK_TIGHT;

@@ -719,7 +719,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 				mfd->panel_power_on = TRUE;
 
 /* ToDo: possible conflict with android which doesn't expect sw refresher */
-/*
+#ifndef FB_MSM_DISABLE_SW_REFRESHER
 	  if (!mfd->hw_refresh)
 	  {
 	    if ((ret = msm_fb_resume_sw_refresher(mfd)) != 0)
@@ -727,7 +727,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	      MSM_FB_INFO("msm_fb_blank_sub: msm_fb_resume_sw_refresher failed = %d!\n",ret);
 	    }
 	  }
-*/
+#endif
 			}
 		}
 		break;

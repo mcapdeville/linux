@@ -198,7 +198,12 @@ extern unsigned char *msm_emdh_base;
 extern unsigned char *mipi_dsi_base;
 #endif
 
+#ifndef CONFIG_FB_MSM_MDDI_SWIFT
 #undef ENABLE_MDDI_MULTI_READ_WRITE
+#else
+#define ENABLE_MDDI_MULTI_READ_WRITE
+#endif
+
 #undef ENABLE_FWD_LINK_SKEW_CALIBRATION
 
 #endif /* MSM_FB_DEF_H */
