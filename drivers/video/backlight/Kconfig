@@ -327,6 +327,13 @@ config BACKLIGHT_PCF50633
 	  If you have a backlight driven by a NXP PCF50633 MFD, say Y here to
 	  enable its driver.
 
+config BACKLIGHT_RT9393
+	tristate "Backlight driver for LGE GT540 Optimus (swift)"
+	depends on BACKLIGHT_CLASS_DEVICE && GPIOLIB
+	help
+	  If you have a backlight driven by the RT9393, say Y here to
+	  enable its driver.
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT
