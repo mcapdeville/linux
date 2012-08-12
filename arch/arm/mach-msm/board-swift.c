@@ -202,6 +202,11 @@ static struct msm_ts_platform_data swift_ts_pdata = {
 	.vkeys_y	= &swift_virtual_keys,
 };
 
+static struct platform_device msm_device_pmic_leds = {
+	.name   = "pmic-leds",
+	.id = -1,
+};
+
 static struct platform_device *devices[] __initdata = {
 	&msm_device_uart3,
 	&msm_device_smd,
@@ -221,6 +226,7 @@ static struct platform_device *devices[] __initdata = {
 #endif
 
 	&msm_device_tssc,
+	&msm_device_pmic_leds,
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
