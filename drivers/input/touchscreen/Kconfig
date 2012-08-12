@@ -380,8 +380,8 @@ config TOUCHSCREEN_PENMOUNT
 	  module will be called penmount.
 
 config TOUCHSCREEN_MSM
-	bool "Qualcomm MSM touchscreen controller"
-	depends on ARCH_MSM7X30 && MARIMBA_TSADC
+	tristate "Qualcomm MSM touchscreen controller"
+	depends on (ARCH_MSM7X30 && MARIMBA_TSADC) || (!ARCH_MSM7X30 && ARCH_MSM)
 	default n
 	help
 	  Say Y here if you have a 4-wire resistive touchscreen panel

@@ -51,6 +51,7 @@
 #include <mach/rpc_server_handset.h>
 #include <mach/msm_tsif.h>
 #include <mach/socinfo.h>
+#include <linux/input/msm_ts.h>
 
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
@@ -167,6 +168,39 @@ static struct platform_device swift_backlight_device = {
 	.id   = -1
 };
 
+static struct ts_virt_key swift_virt_key[]=
+{
+	{
+		.key = KEY_HOME,
+		.min = 0 ,
+		.max = 1200,
+	},
+	{
+		.key = KEY_BACK,
+		.min = 1600,
+		.max = 2800,
+	},
+};
+
+static struct msm_ts_virtual_keys swift_virtual_keys = 
+{
+	.keys = swift_virt_key,
+	.num_keys = ARRAY_SIZE(swift_virt_key)
+};
+
+static struct msm_ts_platform_data swift_ts_pdata = {
+	.min_x		= 1290,
+	.max_x		= 2800,
+	.min_y		= 70,
+	.max_y		= 2480,
+	.min_press	= 0,
+	.max_press	= 256,
+	.inv_x		= 0,
+	.inv_y		= 0,
+
+	.virt_y_start	= 2600,
+	.vkeys_y	= &swift_virtual_keys,
+};
 
 static struct platform_device *devices[] __initdata = {
 	&msm_device_uart3,
@@ -186,6 +220,7 @@ static struct platform_device *devices[] __initdata = {
 	&keypad_device_swift,
 #endif
 
+	&msm_device_tssc,
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
@@ -263,6 +298,8 @@ static void __init msm7x2x_init(void)
 	msm_clock_init(&msm7x27_clock_init_data);
 
 	acpuclk_init(&acpuclk_7x27_soc_data);
+
+	msm_device_tssc.dev.platform_data = &swift_ts_pdata;
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 

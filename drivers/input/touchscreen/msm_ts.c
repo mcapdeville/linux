@@ -64,8 +64,9 @@ struct msm_ts {
 	void __iomem			*tssc_base;
 	uint32_t			ts_down:1;
 	struct ts_virt_key		*vkey_down;
+#ifdef CONFIG_ARCH_MSM7X30
 	struct marimba_tsadc_client	*ts_client;
-
+#endif
 	unsigned int			sample_irq;
 	unsigned int			pen_up_irq;
 
@@ -322,8 +323,9 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	struct resource *irq2_res;
 	int err = 0;
 	int i;
+#ifdef CONFIG_ARCH_MSM_7X30
 	struct marimba_tsadc_client *ts_client;
-
+#endif
 	printk("%s\n", __func__);
 
 	tssc_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "tssc");
@@ -358,7 +360,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto err_ioremap_tssc;
 	}
-
+#ifdef CONFIG_ARCH_MSM7X30
 	ts_client = marimba_tsadc_register(pdev, 1);
 	if (IS_ERR(ts_client)) {
 		pr_err("%s: Unable to register with TSADC\n", __func__);
@@ -373,7 +375,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 		err = -EINVAL;
 		goto err_start_tsadc;
 	}
-
+#endif
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
 		pr_err("failed to allocate touchscreen input device\n");
@@ -454,10 +456,11 @@ err_input_dev_reg:
 	input_free_device(ts->input_dev);
 
 err_alloc_input_dev:
+#ifdef CONFIG_ARCH_MSM7X30
 err_start_tsadc:
 	marimba_tsadc_unregister(ts->ts_client);
-
 err_tsadc_register:
+#endif
 	iounmap(ts->tssc_base);
 
 err_ioremap_tssc:
@@ -470,7 +473,9 @@ static int __devexit msm_ts_remove(struct platform_device *pdev)
 	struct msm_ts *ts = platform_get_drvdata(pdev);
 
 	device_init_wakeup(&pdev->dev, 0);
+#ifdef CONFIG_ARCH_MSM7X30
 	marimba_tsadc_unregister(ts->ts_client);
+#endif
 	free_irq(ts->sample_irq, ts);
 	free_irq(ts->pen_up_irq, ts);
 	input_unregister_device(ts->input_dev);
