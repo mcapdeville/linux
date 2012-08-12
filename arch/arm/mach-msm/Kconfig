@@ -1511,6 +1511,15 @@ config AUDIO_ENHANCED_AAC_PLUS
 config SURF_FFA_GPIO_KEYPAD
 	bool "MSM SURF/FFA GPIO keypad"
 	depends on INPUT_GPIO = "y"
+	depends on !MACH_MSM7X27_SWIFT 
+	default y
+	help
+	  Select if the GPIO keypad is attached.
+
+config SWIFT_GPIO_KEYPAD
+	bool "LGE GT540 (swift) GPIO keypad"
+	depends on INPUT_GPIO = "y"
+	depends on MACH_MSM7X27_SWIFT
 	default y
 	help
 	  Select if the GPIO keypad is attached.

@@ -177,9 +177,15 @@ static struct platform_device *devices[] __initdata = {
 	&android_pmem_device,
 	&android_pmem_adsp_device,
 	&android_pmem_audio_device,
+
 	&msm_fb_device,
 	&mddi_ss_driveric_device,	
 	&swift_backlight_device,
+
+#ifdef CONFIG_SWIFT_GPIO_KEYPAD	
+	&keypad_device_swift,
+#endif
+
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
