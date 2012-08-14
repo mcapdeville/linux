@@ -15,10 +15,10 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/input.h>
+#include <linux/gpio.h>
+#include <linux/gpio_event.h>
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/bootmem.h>
@@ -63,7 +63,6 @@
 #include "devices.h"
 #include "clock.h"
 #include "acpuclock.h"
-#include "msm-keypad-devices.h"
 #include "pm.h"
 #include "pm-boot.h"
 
@@ -168,6 +167,52 @@ static struct platform_device swift_backlight_device = {
 	.id   = -1
 };
 
+static unsigned int keypad_col_gpios_swift[] = { 34, 35, 36 };
+static unsigned int keypad_row_gpios_swift[] = { 37, 38, 39 };
+
+#define KEYMAP_INDEX_SWIFT(col, row) ((col)*ARRAY_SIZE(keypad_row_gpios_swift) + (row))
+
+static const unsigned short keypad_keymap_swift[ARRAY_SIZE(keypad_col_gpios_swift) *
+					  ARRAY_SIZE(keypad_row_gpios_swift)] = {
+	[KEYMAP_INDEX_SWIFT(0, 0)] = KEY_VOLUMEUP, 
+	[KEYMAP_INDEX_SWIFT(0, 1)] = KEY_VOLUMEDOWN, 
+	[KEYMAP_INDEX_SWIFT(1, 0)] = KEY_CAMERA_FOCUS, 
+	[KEYMAP_INDEX_SWIFT(1, 1)] = KEY_CAMERA_SNAPSHOT, 
+	[KEYMAP_INDEX_SWIFT(1, 2)] = KEY_SEARCH,
+	[KEYMAP_INDEX_SWIFT(2, 0)] = KEY_SEND,
+	[KEYMAP_INDEX_SWIFT(2, 1)] = KEY_HOME,
+};
+
+struct gpio_event_matrix_info swift_keypad_matrix_info = {
+	.info.func	= gpio_event_matrix_func,
+	.keymap		= keypad_keymap_swift,
+	.output_gpios	= keypad_col_gpios_swift,
+	.input_gpios	= keypad_row_gpios_swift,
+	.noutputs	= ARRAY_SIZE(keypad_col_gpios_swift),
+	.ninputs	= ARRAY_SIZE(keypad_row_gpios_swift),
+	.settle_time.tv_nsec = 40 * NSEC_PER_USEC,
+	.poll_time.tv_nsec = 20 * NSEC_PER_MSEC,
+	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE |
+			  GPIOKPF_PRINT_MAPPED_KEYS
+};
+
+struct gpio_event_info *swift_keypad_info[] = {
+	&swift_keypad_matrix_info.info,
+};
+
+struct gpio_event_platform_data swift_keypad_data = {
+	.name		= "swift_keypad",
+	.info		= swift_keypad_info,
+	.info_count	= ARRAY_SIZE(swift_keypad_info),
+};
+
+struct platform_device swift_keypad = {
+	.name	= GPIO_EVENT_DEV_NAME,
+	.id	= 0,
+	.dev	= {
+		.platform_data	= &swift_keypad_data,
+	},
+};
 static struct ts_virt_key swift_virt_key[]=
 {
 	{
@@ -221,9 +266,7 @@ static struct platform_device *devices[] __initdata = {
 	&mddi_ss_driveric_device,	
 	&swift_backlight_device,
 
-#ifdef CONFIG_SWIFT_GPIO_KEYPAD	
-	&keypad_device_swift,
-#endif
+	&swift_keypad,
 
 	&msm_device_tssc,
 	&msm_device_pmic_leds,
