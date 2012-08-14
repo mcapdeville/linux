@@ -252,6 +252,22 @@ static struct platform_device msm_device_pmic_leds = {
 	.id = -1,
 };
 
+struct msm_handset_platform_data swift_handset_pdata =
+{
+	.hs_name = "swift_handset",
+	.pwr_key_delay_ms = 500,
+};
+
+static struct platform_device swift_handset =
+{
+	.name = "msm-handset",
+	.id = -1,
+	.dev = { 
+		.platform_data = &swift_handset_pdata,
+	},
+};
+
+
 static struct platform_device *devices[] __initdata = {
 	&msm_device_uart3,
 	&msm_device_smd,
@@ -270,6 +286,7 @@ static struct platform_device *devices[] __initdata = {
 
 	&msm_device_tssc,
 	&msm_device_pmic_leds,
+	&swift_handset,
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
