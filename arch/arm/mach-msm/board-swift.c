@@ -163,8 +163,11 @@ struct platform_device mddi_ss_driveric_device = {
 };
 
 static struct platform_device swift_backlight_device = {
-	.name = "swift_backlight",
-	.id   = -1
+	.name = "rt9393",
+	.id   = -1,
+	.dev  = {
+		.platform_data = "msm_fb"
+	}
 };
 
 static unsigned int keypad_col_gpios_swift[] = { 34, 35, 36 };

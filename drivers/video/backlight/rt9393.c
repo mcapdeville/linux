@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#include <linux/fb.h>
 
 #if defined(CONFIG_RT9393_MSG_DEBUG)
 enum {
@@ -173,15 +174,28 @@ static int rt9393_get_intensity(struct backlight_device *bd)
 	return current_intensity;
 }
 
-int rt9393_set_intensity(struct backlight_device *bd)
+static int rt9393_update_status(struct backlight_device *bd)
 {
+	if (bd->props.power!=FB_BLANK_UNBLANK || bd->props.state & BL_CORE_FBBLANK)
+	{
+		rt9393_power_down();
+		return 0;
+	}
+
 	rt9393_send_intensity(bd);
 	return 0;
 }
 
+static int rt9393_check_fb(struct backlight_device *db, struct fb_info *fbi)
+{
+//	return db==fbi.bl_dev;
+	return 1;
+}
+
 static struct backlight_ops rt9393_ops = {
 	.get_brightness = rt9393_get_intensity,
-	.update_status = rt9393_set_intensity,
+	.update_status = rt9393_update_status,
+	.check_fb = rt9393_check_fb
 };
 
 #if defined(CONFIG_RT9393_SYS_DEBUG)
@@ -244,7 +258,7 @@ static int rt9393_probe(struct platform_device *pdev)
 	
 	props.type=BACKLIGHT_RAW;
 
-	bd = backlight_device_register("rt9393",&pdev->dev, NULL , &rt9393_ops,&props);
+	bd = backlight_device_register(pdev->dev.platform_data,&pdev->dev, NULL , &rt9393_ops,&props);
 	if (IS_ERR(bd)) {
 		printk("failed to register backlight device\n");
 		return PTR_ERR(bd);
@@ -262,14 +276,11 @@ static int rt9393_probe(struct platform_device *pdev)
 	atomic_set(&lcd_event_handled, 0);
 
 	bd->props.max_brightness = VMAX_BRIGHTNESS;
-	bd->props.power = 0;//FB_BLANK_UNBLANK;
-	//power_state = POWER_DOWN; 
+	bd->props.power = FB_BLANK_UNBLANK;
 
 	setup_timer(&timerblbl, bl_timer, (unsigned long)pdev);
-#if 1
 	bd->props.brightness = MAX_BRIGHTNESS/2;
-	rt9393_set_intensity(bd);
-#endif
+	rt9393_send_intensity(bd);
 
 #if defined(CONFIG_RT9393_SYS_DEBUG)
 	err = device_create_file(&bd->dev, &dev_attr_bri);
@@ -305,7 +316,7 @@ static struct platform_driver this_driver = {
 	.suspend	= rt9393_suspend,
 	.resume		= rt9393_resume,
 	.driver		= {
-		.name	= "swift_backlight",
+		.name	= "rt9393",
 	},
 };
 

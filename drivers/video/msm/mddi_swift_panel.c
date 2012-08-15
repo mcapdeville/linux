@@ -516,7 +516,8 @@ int mddi_ss_driveric_register(struct msm_panel_info *pinfo,
 
 #ifdef CONFIG_FB_BACKLIGHT
 		ss_driveric_panel_data.set_backlight =
-			&mddi_ss_driveric_set_backlight;
+//			&mddi_ss_driveric_set_backlight;
+			NULL;
 #endif
 
 		if (pinfo->lcd.vsync_enable) {
