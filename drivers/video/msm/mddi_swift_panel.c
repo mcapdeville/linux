@@ -17,8 +17,7 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 
-#include <mach/vreg.h>
-
+#include <linux/regulator/consumer.h>
 #include <linux/backlight.h>
 
 #include "msm_fb.h"
@@ -50,6 +49,12 @@ typedef enum {
 static uint32 mddi_ss_driveric_curr_vpos;
 static boolean mddi_ss_driveric_monitor_refresh_value = FALSE;
 static boolean mddi_ss_driveric_report_refresh_measurements = FALSE;
+static struct regulator_bulk_data vregs[2]=
+{
+	{"gp1",NULL,1800000,1800000},
+	{"gp2",NULL,2800000,2800000}
+};
+static boolean regs_enable;
 
 /* These value is taken from EVE source */
 /* Dot clock (10MHz) / pixels per row (320) = rows_per_second 
@@ -354,29 +359,14 @@ static int mddi_ss_driveric_on(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 
 #if SWIFT_LCD_VREG
-	struct vreg *vreg;
 	unsigned int ret=0;
 
-   if (system_state != SYSTEM_BOOTING) {
-   	vreg = vreg_get(NULL, "gp1");
-	   if(IS_ERR(vreg)) {
-		   printk(KERN_ERR "%s: vreg_get(%s) failed (%ld)\n",
-			   	__func__, "gp1", PTR_ERR(vreg));
-	   }
-	   ret = vreg_enable(vreg);
+   if (system_state != SYSTEM_BOOTING && !regs_enable) {
+	   ret=regulator_bulk_enable(2,vregs);
 	   if (ret) {
 		   printk(KERN_ERR "%s: vreg enabled failed!\n", __func__);
 	   }
-
-	   vreg = vreg_get(NULL, "gp2");
-	   if (IS_ERR(vreg)) {
-		   printk(KERN_ERR "%s: vreg_get(%s) failed (%ld)\n",
-			   	__func__, "gp2", PTR_ERR(vreg));
-	   }
-	   ret = vreg_enable(vreg);
-	   if (ret) {
-		   printk(KERN_ERR "%s: vreg enabled failed!\n", __func__);
-	   }
+	   else regs_enable=1;
 	   mdelay(1);
 
    }
@@ -404,7 +394,6 @@ static int mddi_ss_driveric_on(struct platform_device *pdev)
 static int mddi_ss_driveric_off(struct platform_device *pdev)
 {
 #if SWIFT_LCD_VREG
-	struct vreg *vreg;
 	unsigned int ret=0;
 #endif
 #if SWIFT_DEBUG_LCD
@@ -413,25 +402,14 @@ static int mddi_ss_driveric_off(struct platform_device *pdev)
 	mddi_ss_driveric_powerdown(platform_get_drvdata(pdev));
 
 #if SWIFT_LCD_VREG
-	
-		vreg = vreg_get(NULL, "gp1");
-		if(IS_ERR(vreg)) {
-		printk(KERN_ERR "%s: vreg_get(%s) failed (%ld)\n",
-					__func__, "gp1", PTR_ERR(vreg));
-	}
-		ret = vreg_disable(vreg);
-		if(ret) {
-			printk(KERN_ERR "%s: vreg disabled failed!\n", __func__);//
-		}
-		vreg = vreg_get(NULL, "gp2");
-		if(IS_ERR(vreg)) {
-			printk(KERN_ERR "%s: vreg_get(%s) failed (%ld)\n",
-				__func__, "gp2", PTR_ERR(vreg));
-		}
-	ret = vreg_disable(vreg);
-	if(ret) {
-		printk(KERN_ERR "%s: vreg disabled failed!\n", __func__);
-			}
+	   if (regs_enable)
+	   {
+		   ret=regulator_bulk_disable(2,vregs);
+		   if (ret) {
+			   printk(KERN_ERR "%s: vreg disabled failed!\n", __func__);
+		   }
+		   else regs_enable=0;
+	   }
 #endif
 	return 0;
 }
@@ -469,14 +447,26 @@ static int __devinit mddi_swift_probe(struct platform_device *pdev)
 			printk(KERN_ERR "Cannot get the gpio pin : %d\n", GPIO_LCD_RESET_N);
 			return err;
 		}
-	
+
+	regulator_bulk_get(NULL,2,vregs);
+	regulator_bulk_set_voltage(2,vregs);
+
 	msm_fb_add_device(pdev);
+
+	return 0;
+}
+
+static int mddi_swift_remove(struct platform_device *pdev)
+{
+	mddi_ss_driveric_off(pdev);
+	regulator_bulk_free(2,vregs);
 
 	return 0;
 }
 
 static struct  platform_driver this_driver = {
   	.probe	= mddi_swift_probe,
+	.remove = mddi_swift_remove,
 	.driver	= {
 		.name	= "mddi_swift",
 	},
