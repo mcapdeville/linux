@@ -220,13 +220,13 @@ static struct ts_virt_key swift_virt_key[]=
 {
 	{
 		.key = KEY_HOME,
-		.min = 0 ,
-		.max = 1200,
+		.min = 2400 ,
+		.max = 4095,
 	},
 	{
 		.key = KEY_BACK,
-		.min = 1600,
-		.max = 2800,
+		.min = 0,
+		.max = 1200,
 	},
 };
 
@@ -237,17 +237,17 @@ static struct msm_ts_virtual_keys swift_virtual_keys =
 };
 
 static struct msm_ts_platform_data swift_ts_pdata = {
-	.min_x		= 1290,
-	.max_x		= 2800,
-	.min_y		= 70,
-	.max_y		= 2480,
+	.min_x		= 0,
+	.max_x		= 4095,
+	.min_y		= 0,
+	.max_y		= 4095,
 	.min_press	= 0,
-	.max_press	= 256,
-	.inv_x		= 0,
-	.inv_y		= 0,
+	.max_press	= 255,
+	.inv_x		= 4095,
+	.inv_y		= 4095,
 
-	.virt_y_start	= 2600,
-	.vkeys_y	= &swift_virtual_keys,
+	.virt_x_start	= 3400,
+	.vkeys_x	= &swift_virtual_keys,
 };
 
 static struct platform_device msm_device_pmic_leds = {
