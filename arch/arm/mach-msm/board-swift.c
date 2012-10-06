@@ -295,6 +295,169 @@ static struct platform_device swift_battery = {
 	.dev.platform_data  = &msm_psy_batt_data,
 };
 
+#if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
+	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT))
+
+static unsigned long vreg_sts, gpio_sts;
+static struct regulator *vreg_mmc;
+
+struct sdcc_gpio {
+	struct msm_gpio *cfg_data;
+	uint32_t size;
+	struct msm_gpio *sleep_cfg_data;
+};
+
+static struct msm_gpio sdc1_cfg_data[] = {
+	{GPIO_CFG(51, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_dat_3"},
+	{GPIO_CFG(52, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_dat_2"},
+	{GPIO_CFG(53, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_dat_1"},
+	{GPIO_CFG(54, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_dat_0"},
+	{GPIO_CFG(55, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc1_cmd"},
+	{GPIO_CFG(56, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "sdc1_clk"},
+};
+
+static struct msm_gpio sdc2_cfg_data[] = {
+	{GPIO_CFG(62, 2, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_8MA), "sdc2_clk"},
+	{GPIO_CFG(63, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc2_cmd"},
+	{GPIO_CFG(64, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc2_dat_3"},
+	{GPIO_CFG(65, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc2_dat_2"},
+	{GPIO_CFG(66, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc2_dat_1"},
+	{GPIO_CFG(67, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "sdc2_dat_0"},
+};
+
+static struct msm_gpio sdc2_sleep_cfg_data[] = {
+	{GPIO_CFG(62, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), "sdc2_clk"},
+	{GPIO_CFG(63, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), "sdc2_cmd"},
+	{GPIO_CFG(64, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), "sdc2_dat_3"},
+	{GPIO_CFG(65, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), "sdc2_dat_2"},
+	{GPIO_CFG(66, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), "sdc2_dat_1"},
+	{GPIO_CFG(67, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), "sdc2_dat_0"},
+};
+
+static struct sdcc_gpio sdcc_cfg_data[] = {
+	{
+		.cfg_data = sdc1_cfg_data,
+		.size = ARRAY_SIZE(sdc1_cfg_data),
+		.sleep_cfg_data = NULL,
+	},
+	{
+		.cfg_data = sdc2_cfg_data,
+		.size = ARRAY_SIZE(sdc2_cfg_data),
+		.sleep_cfg_data = sdc2_sleep_cfg_data,
+	},
+};
+
+static void msm_sdcc_setup_gpio(int dev_id, unsigned int enable)
+{
+	int rc = 0;
+	struct sdcc_gpio *curr;
+
+	curr = &sdcc_cfg_data[dev_id - 1];
+	if (!(test_bit(dev_id, &gpio_sts)^enable))
+		return;
+
+	if (enable) {
+		set_bit(dev_id, &gpio_sts);
+		rc = msm_gpios_request_enable(curr->cfg_data, curr->size);
+		if (rc)
+			printk(KERN_ERR "%s: Failed to turn on GPIOs for slot %d\n",
+				__func__,  dev_id);
+	} else {
+		clear_bit(dev_id, &gpio_sts);
+		if (curr->sleep_cfg_data) {
+			msm_gpios_enable(curr->sleep_cfg_data, curr->size);
+			msm_gpios_free(curr->sleep_cfg_data, curr->size);
+			return;
+		}
+		msm_gpios_disable_free(curr->cfg_data, curr->size);
+	}
+}
+
+static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
+{
+	int rc = 0;
+	struct platform_device *pdev;
+
+	pdev = container_of(dv, struct platform_device, dev);
+	msm_sdcc_setup_gpio(pdev->id, !!vdd);
+
+	if (vdd == 0) {
+		if (!vreg_sts)
+			return 0;
+
+		clear_bit(pdev->id, &vreg_sts);
+
+		if (!vreg_sts) {
+			rc = regulator_disable(vreg_mmc);
+			if (rc) {
+				pr_err("%s: return val: %d\n",
+					__func__, rc);
+			}
+		}
+		return 0;
+	}
+
+	if (!vreg_sts) {
+		rc = regulator_set_voltage(vreg_mmc, 2850000, 2850000);
+		if (!rc)
+			rc = regulator_enable(vreg_mmc);
+		if (rc) {
+			pr_err("%s: return val: %d\n",
+					__func__, rc);
+		}
+	}
+	set_bit(pdev->id, &vreg_sts);
+	return 0;
+}
+
+
+#ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
+static struct mmc_platform_data msm7x2x_sdc1_data = {
+	.ocr_mask	= MMC_VDD_28_29,
+	.translate_vdd	= msm_sdcc_setup_power,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+	.msmsdcc_fmin	= 144000,
+	.msmsdcc_fmid	= 24576000,
+	.msmsdcc_fmax	= 49152000,
+	.nonremovable	= 0,
+};
+#endif
+
+#ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
+static struct mmc_platform_data msm7x2x_sdc2_data = {
+	.ocr_mask	= MMC_VDD_28_29,
+	.translate_vdd	= msm_sdcc_setup_power,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+#ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
+	.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
+#endif
+	.msmsdcc_fmin	= 144000,
+	.msmsdcc_fmid	= 24576000,
+	.msmsdcc_fmax	= 49152000,
+	.nonremovable	= 0,
+};
+#endif
+
+static void __init msm7x2x_init_mmc(void)
+{
+	vreg_mmc = regulator_get(NULL, "mmc");
+	if (IS_ERR(vreg_mmc)) {
+		pr_err("%s: could not get regulator: %ld\n",
+				__func__, PTR_ERR(vreg_mmc));
+	}
+
+#ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
+	msm_add_sdcc(1, &msm7x2x_sdc1_data);
+#endif
+
+#ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
+	msm_sdcc_setup_gpio(2, 1);
+	msm_add_sdcc(2, &msm7x2x_sdc2_data);
+#endif
+
+}
+#endif
+
 static struct platform_device *devices[] __initdata = {
 	&msm_device_uart3,
 	&msm_device_smd,
@@ -401,6 +564,11 @@ static void __init msm7x2x_init(void)
 
 	msm_pm_set_platform_data(msm7x27_pm_data,
 				ARRAY_SIZE(msm7x27_pm_data));
+
+#if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
+	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT))
+	msm7x2x_init_mmc();
+#endif
 
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 }
