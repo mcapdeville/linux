@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/bootmem.h>
 #include <linux/power_supply.h>
+#include <linux/keyreset.h>
 
 #include <mach/msm_memtypes.h>
 #include <mach/hardware.h>
@@ -250,6 +251,26 @@ static struct msm_ts_platform_data swift_ts_pdata = {
 	.vkeys_x	= &swift_virtual_keys,
 };
 
+static int swift_reset_keys_up[] = {
+	KEY_VOLUMEUP,
+	0,
+};
+
+static struct keyreset_platform_data swift_reset_keys_pdata = {
+	.keys_up	= swift_reset_keys_up,
+	.keys_down	= {
+		KEY_POWER,
+		0
+	},
+};
+
+struct platform_device swift_reset_keys_device = {
+	.name	= KEYRESET_NAME,
+	.dev	= {
+		.platform_data = &swift_reset_keys_pdata,
+	},
+};
+
 static struct platform_device msm_device_pmic_leds = {
 	.name   = "pmic-leds",
 	.id = -1,
@@ -473,7 +494,7 @@ static struct platform_device *devices[] __initdata = {
 	&swift_backlight_device,
 
 	&swift_keypad,
-
+	&swift_reset_keys_device,
 	&msm_device_tssc,
 	&msm_device_pmic_leds,
 	&swift_handset,
