@@ -253,12 +253,18 @@ static struct msm_ts_platform_data swift_ts_pdata = {
 
 static int swift_reset_keys_up[] = {
 	KEY_VOLUMEUP,
+	KEY_VOLUMEDOWN,
+	KEY_CAMERA_SNAPSHOT,
+	KEY_SEARCH,
+	KEY_HOME,
+	KEY_SEND,
 	0,
 };
 
 static struct keyreset_platform_data swift_reset_keys_pdata = {
 	.keys_up	= swift_reset_keys_up,
 	.keys_down	= {
+		KEY_CAMERA_FOCUS,
 		KEY_POWER,
 		0
 	},
