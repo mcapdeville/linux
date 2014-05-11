@@ -194,6 +194,14 @@ static struct dmi_system_id __initdata reboot_dmi_table[] = {
 	},
 
 	/* ASUS */
+	{	/* Handle problems with rebooting on ASUS T100TA */
+		.callback = set_pci_reboot,
+		.ident = "ASUS T100TA",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "ASUSTeK COMPUTER INC."),
+			DMI_MATCH(DMI_BOARD_NAME, "T100TA"),
+		},
+	},
 	{	/* Handle problems with rebooting on ASUS P4S800 */
 		.callback = set_bios_reboot,
 		.ident = "ASUS P4S800",
