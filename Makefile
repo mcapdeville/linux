@@ -1,5 +1,5 @@
 EXTRA_CFLAGS += $(USER_EXTRA_CFLAGS)
-EXTRA_CFLAGS += -O1
+EXTRA_CFLAGS += -O2
 #EXTRA_CFLAGS += -O3
 #EXTRA_CFLAGS += -Wall
 #EXTRA_CFLAGS += -Wextra
@@ -29,7 +29,7 @@ CONFIG_PCI_HCI = n
 CONFIG_SDIO_HCI = n
 
 CONFIG_MP_INCLUDED = n
-CONFIG_POWER_SAVING = y
+CONFIG_POWER_SAVING = n
 CONFIG_USB_AUTOSUSPEND = n
 CONFIG_HW_PWRP_DETECTION = n
 CONFIG_WIFI_TEST = n
@@ -589,16 +589,6 @@ strip:
 install:
 	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)
 	/sbin/depmod -a ${KVER}
-	echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
-
-dkms:	clean
-	rm -rf /usr/src/$(MODULE_NAME)-4.0.29
-	mkdir /usr/src/$(MODULE_NAME)-4.0.29 -p
-	cp . /usr/src/$(MODULE_NAME)-4.0.29 -a
-	rm -rf /usr/src/$(MODULE_NAME)-4.0.29/.git
-	dkms add -m $(MODULE_NAME) -v 4.0.29
-	dkms build -m $(MODULE_NAME) -v 4.0.29
-	dkms install -m $(MODULE_NAME) -v 4.0.29 --force
 	echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
 
 uninstall:
