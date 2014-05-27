@@ -243,7 +243,7 @@ ARCH ?= $(SUBARCH)
 CROSS_COMPILE ?=
 KVER  := $(shell uname -r)
 KSRC := /lib/modules/$(KVER)/build
-MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/
+MODDESTDIR := /lib/modules/$(KVER)/misc
 INSTALL_PREFIX :=
 endif
 
@@ -587,7 +587,7 @@ strip:
 	$(CROSS_COMPILE)strip $(MODULE_NAME).ko --strip-unneeded
 
 install:
-	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)
+	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)/
 	/sbin/depmod -a ${KVER}
 	echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
 
