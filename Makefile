@@ -82,6 +82,7 @@ RTL871X = rtl8192c
 
 ifeq ($(CONFIG_USB_HCI), y)
 MODULE_NAME = rt8192cu
+MODNAME = 8192cu
 FW_FILES := hal/$(RTL871X)/usb/Hal8192CUHWImg.o
 ifneq ($(CONFIG_WAKE_ON_WLAN), n)
 FW_FILES += hal/$(RTL871X)/usb/Hal8192CUHWImg_wowlan.o
@@ -89,6 +90,7 @@ endif
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
 MODULE_NAME = rt8192ce
+MODNAME = 8192ce
 FW_FILES := hal/$(RTL871X)/pci/Hal8192CEHWImg.o
 endif
 
@@ -104,6 +106,7 @@ RTL871X = rtl8192d
 
 ifeq ($(CONFIG_USB_HCI), y)
 MODULE_NAME = rt8192du
+MODNAME = 8192du
 FW_FILES := hal/$(RTL871X)/usb/Hal8192DUHWImg.o
 ifneq ($(CONFIG_WAKE_ON_WLAN), n)
 FW_FILES += hal/$(RTL871X)/usb/Hal8192DUHWImg_wowlan.o
@@ -111,6 +114,7 @@ endif
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
 MODULE_NAME = rt8192de
+MODNAME = 8192de
 FW_FILES := hal/$(RTL871X)/pci/Hal8192DEHWImg.o
 endif
 
@@ -125,16 +129,19 @@ RTL871X = rtl8723a
 
 ifeq ($(CONFIG_SDIO_HCI), y)
 MODULE_NAME = rt8723as
+MODNAME = 8723as
 FW_FILES := hal/$(RTL871X)/sdio/Hal8723SHWImg.o
 endif
 
 ifeq ($(CONFIG_USB_HCI), y)
 MODULE_NAME = rt8723au
+MODNAME = 8723au
 FW_FILES := hal/$(RTL871X)/usb/Hal8723UHWImg.o
 endif
 
 ifeq ($(CONFIG_PCI_HCI), y)
 MODULE_NAME = rt8723ae
+MODNAME = rt8723ae
 FW_FILES := hal/$(RTL871X)/pci/Hal8723EHWImg.o
 endif
 
@@ -180,9 +187,9 @@ _HAL_INTFS_FILES :=	hal/hal_intf.o \
 			hal/$(RTL871X)/$(RTL871X)_rxdesc.o \
 			hal/$(RTL871X)/$(RTL871X)_cmd.o \
 			hal/$(RTL871X)/$(HCI_NAME)/$(HCI_NAME)_halinit.o \
-			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODULE_NAME)_led.o \
-			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODULE_NAME)_xmit.o \
-			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODULE_NAME)_recv.o
+			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODNAME)_led.o \
+			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODNAME)_xmit.o \
+			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODNAME)_recv.o
 
 ifeq ($(CONFIG_SDIO_HCI), y)
 _HAL_INTFS_FILES += hal/$(RTL871X)/$(HCI_NAME)/$(HCI_NAME)_ops.o
