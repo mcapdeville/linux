@@ -1,5 +1,5 @@
 EXTRA_CFLAGS += $(USER_EXTRA_CFLAGS)
-EXTRA_CFLAGS += -O2 -pipe -fPIC -fomit-frame-pointer -fno-strict-aliasing
+EXTRA_CFLAGS += -O2
 #EXTRA_CFLAGS += -O3
 #EXTRA_CFLAGS += -Wall
 #EXTRA_CFLAGS += -Wextra
