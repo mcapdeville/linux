@@ -1,5 +1,5 @@
 EXTRA_CFLAGS += $(USER_EXTRA_CFLAGS)
-EXTRA_CFLAGS += -O2
+EXTRA_CFLAGS += -O2 -pipe -fPIC -fomit-frame-pointer -fno-strict-aliasing
 #EXTRA_CFLAGS += -O3
 #EXTRA_CFLAGS += -Wall
 #EXTRA_CFLAGS += -Wextra
@@ -81,14 +81,14 @@ ifeq ($(CONFIG_RTL8192C), y)
 RTL871X = rtl8192c
 
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8192cu
+MODULE_NAME = rt8192cu
 FW_FILES := hal/$(RTL871X)/usb/Hal8192CUHWImg.o
 ifneq ($(CONFIG_WAKE_ON_WLAN), n)
 FW_FILES += hal/$(RTL871X)/usb/Hal8192CUHWImg_wowlan.o
 endif
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
-MODULE_NAME = 8192ce
+MODULE_NAME = rt8192ce
 FW_FILES := hal/$(RTL871X)/pci/Hal8192CEHWImg.o
 endif
 
@@ -103,14 +103,14 @@ ifeq ($(CONFIG_RTL8192D), y)
 RTL871X = rtl8192d
 
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8192du
+MODULE_NAME = rt8192du
 FW_FILES := hal/$(RTL871X)/usb/Hal8192DUHWImg.o
 ifneq ($(CONFIG_WAKE_ON_WLAN), n)
 FW_FILES += hal/$(RTL871X)/usb/Hal8192DUHWImg_wowlan.o
 endif
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
-MODULE_NAME = 8192de
+MODULE_NAME = rt8192de
 FW_FILES := hal/$(RTL871X)/pci/Hal8192DEHWImg.o
 endif
 
@@ -124,17 +124,17 @@ ifeq ($(CONFIG_RTL8723A), y)
 RTL871X = rtl8723a
 
 ifeq ($(CONFIG_SDIO_HCI), y)
-MODULE_NAME = 8723as
+MODULE_NAME = rt8723as
 FW_FILES := hal/$(RTL871X)/sdio/Hal8723SHWImg.o
 endif
 
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8723au
+MODULE_NAME = rt8723au
 FW_FILES := hal/$(RTL871X)/usb/Hal8723UHWImg.o
 endif
 
 ifeq ($(CONFIG_PCI_HCI), y)
-MODULE_NAME = 8723ae
+MODULE_NAME = rt8723ae
 FW_FILES := hal/$(RTL871X)/pci/Hal8723EHWImg.o
 endif
 
