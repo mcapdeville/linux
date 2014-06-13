@@ -598,7 +598,7 @@ strip:
 install:
 	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)/
 	/sbin/depmod -a ${KVER}
-	echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
+	grep -wq rtl8192cu /etc/modprobe.d/blacklist.conf 2>/dev/null || echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
 
 uninstall:
 	rm -f $(MODDESTDIR)/$(MODULE_NAME).ko
