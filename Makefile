@@ -596,7 +596,8 @@ strip:
 	$(CROSS_COMPILE)strip $(MODULE_NAME).ko --strip-unneeded
 
 install:
-	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)/
+	[ -d $(MODDESTDIR) ] || mkdir -p $(MODDESTDIR) 2>/dev/null
+	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)
 	/sbin/depmod -a ${KVER}
 	grep -wq rtl8192cu /etc/modprobe.d/blacklist.conf 2>/dev/null || echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
 
