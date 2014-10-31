@@ -55,19 +55,19 @@ MODULE_VERSION(DRIVERVERSION);
 /* module param defaults */
 int rtw_chip_version = 0x00;
 int rtw_rfintfs = HWPI;
-int rtw_lbkmode = 0; //RTL8712_AIR_TRX;
+int rtw_lbkmode = 0;//RTL8712_AIR_TRX;
 
 
-int rtw_network_mode = Ndis802_11IBSS; //Ndis802_11Infrastructure;//infra, ad-hoc, auto
-//NDIS_802_11_SSID ssid;
-int rtw_channel = 1; //ad-hoc support requirement
+int rtw_network_mode = Ndis802_11IBSS;//Ndis802_11Infrastructure;//infra, ad-hoc, auto
+//NDIS_802_11_SSID	ssid;
+int rtw_channel = 1;//ad-hoc support requirement
 int rtw_wireless_mode = WIRELESS_11BG_24N;
 int rtw_vrtl_carrier_sense = AUTO_VCS;
-int rtw_vcs_type = RTS_CTS;
-int rtw_rts_thresh = 2347;
-int rtw_frag_thresh = 2346;
-int rtw_preamble = PREAMBLE_LONG; //long, short, auto
-int rtw_scan_mode = 1; //active, passive
+int rtw_vcs_type = RTS_CTS;//*
+int rtw_rts_thresh = 2347;//*
+int rtw_frag_thresh = 2346;//*
+int rtw_preamble = PREAMBLE_LONG;//long, short, auto
+int rtw_scan_mode = 1;//active, passive
 int rtw_adhoc_tx_pwr = 1;
 int rtw_soft_ap = 0;
 //int smart_ps = 1;
@@ -99,9 +99,9 @@ int rtw_mp_mode = 0;
 int rtw_software_encrypt = 0;
 int rtw_software_decrypt = 0;
 
-int rtw_acm_method = 0; // 0:By SW 1:By HW.
+int rtw_acm_method = 0;// 0:By SW 1:By HW.
 
-int rtw_wmm_enable = 1; // default is set to enable the wmm.
+int rtw_wmm_enable = 1;// default is set to enable the wmm.
 int rtw_uapsd_enable = 0;
 int rtw_uapsd_max_sp = NO_LIMIT;
 int rtw_uapsd_acbk_en = 0;
@@ -111,19 +111,19 @@ int rtw_uapsd_acvo_en = 0;
 
 #ifdef CONFIG_80211N_HT
 int rtw_ht_enable = 1;
-int rtw_cbw40_enable = 2; // 0 :diable, bit(0): enable 2.4g, bit(1): enable 5g
-int rtw_ampdu_enable = 1; //for enable tx_ampdu
-int rtw_rx_stbc = 1; // 0: disable, bit(0):enable 2.4g, bit(1):enable 5g, default is set to enable 2.4GHZ for IOT issue with bufflao's AP at 5GHZ
-int rtw_ampdu_amsdu = 0; // 0: disabled, 1:enabled, 2:auto
+int rtw_cbw40_enable = 3; // 0 :diable, bit(0): enable 2.4g, bit(1): enable 5g
+int rtw_ampdu_enable = 1;//for enable tx_ampdu
+int rtw_rx_stbc = 1;// 0: disable, bit(0):enable 2.4g, bit(1):enable 5g, default is set to enable 2.4GHZ for IOT issue with bufflao's AP at 5GHZ
+int rtw_ampdu_amsdu = 0;// 0: disabled, 1:enabled, 2:auto
 #endif
 
-int rtw_lowrate_two_xmit = 1; //Use 2 path Tx to transmit MCS0~7 and legacy mode
+int rtw_lowrate_two_xmit = 1;//Use 2 path Tx to transmit MCS0~7 and legacy mode
 
 //int rf_config = RF_1T2R;  // 1T2R
-int rtw_rf_config = RF_819X_MAX_TYPE; //auto
+int rtw_rf_config = RF_819X_MAX_TYPE;  //auto
 int rtw_low_power = 0;
 #ifdef CONFIG_WIFI_TEST
-int rtw_wifi_spec = 1; //for wifi test
+int rtw_wifi_spec = 1;//for wifi test
 #else
 int rtw_wifi_spec = 0;
 #endif
@@ -133,26 +133,26 @@ int rtw_special_rf_path = 0; //0: 2T2R ,1: only turn on path A 1T1R, 2: only tur
 int rtw_channel_plan = RT_CHANNEL_DOMAIN_MAX;
 
 #ifdef CONFIG_BT_COEXIST
-int rtw_bt_iso = 2; // 0:Low, 1:High, 2:From Efuse
-int rtw_bt_sco = 3; // 0:Idle, 1:None-SCO, 2:SCO, 3:From Counter, 4.Busy, 5.OtherBusy
-int rtw_bt_ampdu = 1; // 0:Disable BT control A-MPDU, 1:Enable BT control A-MPDU.
+int rtw_bt_iso = 2;// 0:Low, 1:High, 2:From Efuse
+int rtw_bt_sco = 3;// 0:Idle, 1:None-SCO, 2:SCO, 3:From Counter, 4.Busy, 5.OtherBusy
+int rtw_bt_ampdu =1 ;// 0:Disable BT control A-MPDU, 1:Enable BT control A-MPDU.
 #endif
-int rtw_AcceptAddbaReq = _TRUE; // 0:Reject AP's Add BA req, 1:Accept AP's Add BA req.
+int rtw_AcceptAddbaReq = _TRUE;// 0:Reject AP's Add BA req, 1:Accept AP's Add BA req.
 
 int  rtw_antdiv_cfg = 2; // 0:OFF , 1:ON, 2:decide by Efuse config
 
 #ifdef CONFIG_USB_AUTOSUSPEND
-int rtw_enusbss = 1; //0:disable,1:enable
+int rtw_enusbss = 1;//0:disable,1:enable
 #else
-int rtw_enusbss = 0; //0:disable,1:enable
+int rtw_enusbss = 0;//0:disable,1:enable
 #endif
 
-int rtw_hwpdn_mode=2; //0:disable,1:enable,2: by EFUSE config
+int rtw_hwpdn_mode=2;//0:disable,1:enable,2: by EFUSE config
 
 #ifdef CONFIG_HW_PWRP_DETECTION
 int rtw_hwpwrp_detect = 1;
 #else
-int rtw_hwpwrp_detect = 0; //HW power ping detect 0:disable , 1:enable
+int rtw_hwpwrp_detect = 0; //HW power  ping detect 0:disable , 1:enable
 #endif
 
 #ifdef CONFIG_USB_HCI
