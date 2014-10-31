@@ -1,5 +1,5 @@
 EXTRA_CFLAGS += $(USER_EXTRA_CFLAGS)
-EXTRA_CFLAGS += -O1
+EXTRA_CFLAGS += -O2
 #EXTRA_CFLAGS += -O3
 #EXTRA_CFLAGS += -Wall
 #EXTRA_CFLAGS += -Wextra
@@ -29,7 +29,7 @@ CONFIG_PCI_HCI = n
 CONFIG_SDIO_HCI = n
 
 CONFIG_MP_INCLUDED = n
-CONFIG_POWER_SAVING = y
+CONFIG_POWER_SAVING = n
 CONFIG_USB_AUTOSUSPEND = n
 CONFIG_HW_PWRP_DETECTION = n
 CONFIG_WIFI_TEST = n
@@ -81,14 +81,16 @@ ifeq ($(CONFIG_RTL8192C), y)
 RTL871X = rtl8192c
 
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8192cu
+MODULE_NAME = rt8192cu
+MODNAME = 8192cu
 FW_FILES := hal/$(RTL871X)/usb/Hal8192CUHWImg.o
 ifneq ($(CONFIG_WAKE_ON_WLAN), n)
 FW_FILES += hal/$(RTL871X)/usb/Hal8192CUHWImg_wowlan.o
 endif
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
-MODULE_NAME = 8192ce
+MODULE_NAME = rt8192ce
+MODNAME = 8192ce
 FW_FILES := hal/$(RTL871X)/pci/Hal8192CEHWImg.o
 endif
 
@@ -103,14 +105,16 @@ ifeq ($(CONFIG_RTL8192D), y)
 RTL871X = rtl8192d
 
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8192du
+MODULE_NAME = rt8192du
+MODNAME = 8192du
 FW_FILES := hal/$(RTL871X)/usb/Hal8192DUHWImg.o
 ifneq ($(CONFIG_WAKE_ON_WLAN), n)
 FW_FILES += hal/$(RTL871X)/usb/Hal8192DUHWImg_wowlan.o
 endif
 endif
 ifeq ($(CONFIG_PCI_HCI), y)
-MODULE_NAME = 8192de
+MODULE_NAME = rt8192de
+MODNAME = 8192de
 FW_FILES := hal/$(RTL871X)/pci/Hal8192DEHWImg.o
 endif
 
@@ -124,17 +128,20 @@ ifeq ($(CONFIG_RTL8723A), y)
 RTL871X = rtl8723a
 
 ifeq ($(CONFIG_SDIO_HCI), y)
-MODULE_NAME = 8723as
+MODULE_NAME = rt8723as
+MODNAME = 8723as
 FW_FILES := hal/$(RTL871X)/sdio/Hal8723SHWImg.o
 endif
 
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME = 8723au
+MODULE_NAME = rt8723au
+MODNAME = 8723au
 FW_FILES := hal/$(RTL871X)/usb/Hal8723UHWImg.o
 endif
 
 ifeq ($(CONFIG_PCI_HCI), y)
-MODULE_NAME = 8723ae
+MODULE_NAME = rt8723ae
+MODNAME = rt8723ae
 FW_FILES := hal/$(RTL871X)/pci/Hal8723EHWImg.o
 endif
 
@@ -180,9 +187,9 @@ _HAL_INTFS_FILES :=	hal/hal_intf.o \
 			hal/$(RTL871X)/$(RTL871X)_rxdesc.o \
 			hal/$(RTL871X)/$(RTL871X)_cmd.o \
 			hal/$(RTL871X)/$(HCI_NAME)/$(HCI_NAME)_halinit.o \
-			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODULE_NAME)_led.o \
-			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODULE_NAME)_xmit.o \
-			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODULE_NAME)_recv.o
+			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODNAME)_led.o \
+			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODNAME)_xmit.o \
+			hal/$(RTL871X)/$(HCI_NAME)/rtl$(MODNAME)_recv.o
 
 ifeq ($(CONFIG_SDIO_HCI), y)
 _HAL_INTFS_FILES += hal/$(RTL871X)/$(HCI_NAME)/$(HCI_NAME)_ops.o
@@ -241,9 +248,11 @@ EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
 SUBARCH := $(shell uname -m | sed -e s/i.86/i386/)
 ARCH ?= $(SUBARCH)
 CROSS_COMPILE ?=
+ifeq ($(KVER),)
 KVER  := $(shell uname -r)
+endif
 KSRC := /lib/modules/$(KVER)/build
-MODDESTDIR := /lib/modules/$(KVER)/kernel/drivers/net/wireless/
+MODDESTDIR := /lib/modules/$(KVER)/misc
 INSTALL_PREFIX :=
 endif
 
@@ -587,19 +596,10 @@ strip:
 	$(CROSS_COMPILE)strip $(MODULE_NAME).ko --strip-unneeded
 
 install:
+	[ -d $(MODDESTDIR) ] || mkdir -p $(MODDESTDIR) 2>/dev/null
 	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)
 	/sbin/depmod -a ${KVER}
-	echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
-
-dkms:	clean
-	rm -rf /usr/src/$(MODULE_NAME)-4.0.29
-	mkdir /usr/src/$(MODULE_NAME)-4.0.29 -p
-	cp . /usr/src/$(MODULE_NAME)-4.0.29 -a
-	rm -rf /usr/src/$(MODULE_NAME)-4.0.29/.git
-	dkms add -m $(MODULE_NAME) -v 4.0.29
-	dkms build -m $(MODULE_NAME) -v 4.0.29
-	dkms install -m $(MODULE_NAME) -v 4.0.29 --force
-	echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
+	grep -wq rtl8192cu /etc/modprobe.d/blacklist.conf 2>/dev/null || echo "blacklist rtl8192cu" >> /etc/modprobe.d/blacklist.conf
 
 uninstall:
 	rm -f $(MODDESTDIR)/$(MODULE_NAME).ko
