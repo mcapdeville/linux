@@ -238,6 +238,8 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 	}
 	mmc_host_clk_hold(host);
 	led_trigger_event(host->led, LED_FULL);
+	if (host->qos)
+		pm_qos_update_request(host->qos,0);
 	host->ops->request(host, mrq);
 }
 
@@ -452,6 +454,8 @@ static void mmc_wait_for_req_done(struct mmc_host *host,
 		cmd->error = 0;
 		host->ops->request(host, mrq);
 	}
+	if (host->qos)
+		pm_qos_update_request(host->qos,PM_QOS_DEFAULT_VALUE);
 }
 
 /**

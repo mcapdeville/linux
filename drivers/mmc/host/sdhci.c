@@ -3292,6 +3292,15 @@ int sdhci_add_host(struct sdhci_host *host)
 
 	sdhci_enable_card_detection(host);
 
+	if (host->quirks2 & SDHCI_QUIRK2_USE_PM_QOS) {
+		pr_info("%s: Enabling pm_qos\n", __func__);
+		host->mmc->qos = kzalloc(sizeof(struct pm_qos_request),
+			GFP_KERNEL);
+		if (host->mmc->qos)
+			pm_qos_add_request(host->mmc->qos,
+				PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+	}
+
 	return 0;
 
 #ifdef SDHCI_USE_LEDS_CLASS
@@ -3331,6 +3340,11 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 	}
 
 	sdhci_disable_card_detection(host);
+
+	if (host->mmc->qos) {
+		pm_qos_remove_request(host->mmc->qos);
+		kfree(host->mmc->qos);
+	}
 
 	mmc_remove_host(mmc);
 
