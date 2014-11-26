@@ -140,6 +140,8 @@ static void intel_dsi_enable(struct intel_encoder *encoder)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(encoder->base.crtc);
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
+	struct intel_connector *intel_connector =
+		&intel_dsi->attached_connector->base;
 	int pipe = intel_crtc->pipe;
 	u32 temp;
 
@@ -163,6 +165,8 @@ static void intel_dsi_enable(struct intel_encoder *encoder)
 		I915_WRITE(MIPI_PORT_CTRL(pipe), temp | DPI_ENABLE);
 		POSTING_READ(MIPI_PORT_CTRL(pipe));
 	}
+
+	intel_panel_enable_backlight(intel_connector);
 }
 
 static void intel_dsi_pre_enable(struct intel_encoder *encoder)
@@ -237,6 +241,8 @@ static void intel_dsi_disable(struct intel_encoder *encoder)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(encoder->base.crtc);
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
+	struct intel_connector *intel_connector =
+		&intel_dsi->attached_connector->base;
 	int pipe = intel_crtc->pipe;
 	u32 temp;
 
@@ -252,6 +258,8 @@ static void intel_dsi_disable(struct intel_encoder *encoder)
 
 		msleep(2);
 	}
+
+	intel_panel_disable_backlight(intel_connector);
 
 	/* Panel commands can be sent when clock is in LP11 */
 	I915_WRITE(MIPI_DEVICE_READY(pipe), 0x0);
@@ -670,6 +678,7 @@ static void intel_dsi_destroy(struct drm_connector *connector)
 
 	DRM_DEBUG_KMS("\n");
 	intel_panel_fini(&intel_connector->panel);
+	intel_panel_destroy_backlight(connector);
 	drm_connector_cleanup(connector);
 	kfree(connector);
 }
@@ -786,6 +795,7 @@ void intel_dsi_init(struct drm_device *dev)
 
 	fixed_mode->type |= DRM_MODE_TYPE_PREFERRED;
 	intel_panel_init(&intel_connector->panel, fixed_mode, NULL);
+	intel_panel_setup_backlight(connector);
 
 	return;
 
