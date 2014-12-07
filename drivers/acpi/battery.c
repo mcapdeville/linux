@@ -1219,6 +1219,8 @@ static int acpi_battery_add(struct acpi_device *device)
 
 	device_init_wakeup(&device->dev, 1);
 
+	acpi_walk_dep_device_list(device->handle);
+
 	return result;
 
 fail:
