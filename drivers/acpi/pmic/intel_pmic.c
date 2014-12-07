@@ -125,8 +125,11 @@ pmic_dptf_lpat(struct intel_soc_pmic_opregion *opregion, acpi_handle handle,
 	for (i = 0; i < obj_p->package.count; i++) {
 		obj_e = &obj_p->package.elements[i];
 		if (obj_e->type != ACPI_TYPE_INTEGER)
+		{
+			kfree(lpat);
 			goto out;
-		lpat[i] = obj_e->integer.value;
+		}
+		lpat[i] = (s64)obj_e->integer.value;
 	}
 
 	opregion->lpat = (struct acpi_lpat *)lpat;
@@ -200,7 +203,8 @@ static acpi_status pmic_dptf_temp(struct intel_soc_pmic_opregion *opregion,
 	if (function != ACPI_READ)
 		return AE_BAD_PARAMETER;
 
-	return pmic_read_temp(opregion, reg, value);
+	return function == ACPI_READ ? pmic_read_temp(opregion, reg, value)
+					: AE_BAD_PARAMETER;
 }
 
 static acpi_status pmic_dptf_aux(struct intel_soc_pmic_opregion *opregion,
