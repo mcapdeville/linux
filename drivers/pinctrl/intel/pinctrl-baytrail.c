@@ -624,6 +624,8 @@ static int byt_gpio_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(dev);
 
+	acpi_walk_dep_device_list(handle);
+
 	return 0;
 }
 
