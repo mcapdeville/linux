@@ -470,6 +470,8 @@ static int dw8250_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+	acpi_walk_dep_device_list(ACPI_HANDLE(&pdev->dev));
+
 	return 0;
 
 err_reset:
