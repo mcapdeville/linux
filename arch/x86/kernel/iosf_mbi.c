@@ -24,12 +24,19 @@
 #include <linux/pci.h>
 #include <linux/debugfs.h>
 #include <linux/capability.h>
+#ifdef CONFIG_ACPI
+#include <linux/acpi.h>
+#include <linux/platform_device.h>
+#endif
 
 #include <asm/iosf_mbi.h>
 
 #define PCI_DEVICE_ID_BAYTRAIL		0x0F00
 #define PCI_DEVICE_ID_BRASWELL		0x2280
 #define PCI_DEVICE_ID_QUARK_X1000	0x0958
+
+#define ACPI_DEVICE_ID_BAYTRAIL		"INT33BD"
+#define ACPI_OPREGION_ID		0x87
 
 static DEFINE_SPINLOCK(iosf_mbi_lock);
 
@@ -275,8 +282,7 @@ static inline void iosf_debugfs_remove(void) { }
 
 static int iosf_mbi_probe(struct pci_dev *pdev,
 			  const struct pci_device_id *unused)
-{
-	int ret;
+{	int ret;
 
 	ret = pci_enable_device(pdev);
 	if (ret < 0) {
@@ -302,10 +308,113 @@ static struct pci_driver iosf_mbi_pci_driver = {
 	.id_table	= iosf_mbi_pci_ids,
 };
 
+#ifdef CONFIG_ACPI
+
+struct mutex iosf_mbi_op_lock;
+static union {
+	char bytes [0x30];
+	struct {
+		u32 port;
+		u32 reg;
+		u32 data;
+		u32 mask;
+		u32 be;
+		u32 op;
+	} regs;
+} iosf_mbi_op;
+
+static acpi_status iosf_mbi_acpi_opregion_handler(u32 function, acpi_physical_address address,
+				u32 bits, u64 *value64,
+				void *handler_context, void *region_context) {
+	int result=0;
+
+	if (bits != 32 || !value64)
+		return AE_BAD_PARAMETER;
+
+	if (address<0 || address>0x30)
+		return AE_BAD_PARAMETER;
+
+	mutex_lock(&iosf_mbi_op_lock);
+
+	if (function == ACPI_READ) {
+		if (address==8 && iosf_mbi_op.regs.op==0) {
+			result=iosf_mbi_read(iosf_mbi_op.regs.port,iosf_mbi_op.regs.op,iosf_mbi_op.regs.reg,&iosf_mbi_op.regs.data);
+			iosf_mbi_op.regs.op=0xffffffff;
+		}
+		*value64 = *((u32*)&(iosf_mbi_op.bytes[address]));
+	}
+	else {
+		*((u32*)&(iosf_mbi_op.bytes[address]))=*value64;
+		if (address==8 && iosf_mbi_op.regs.op==1) {
+			result=iosf_mbi_write(iosf_mbi_op.regs.port,iosf_mbi_op.regs.op,iosf_mbi_op.regs.reg,iosf_mbi_op.regs.data);
+			iosf_mbi_op.regs.op=0xffffffff;
+		}
+		if (address==12 && iosf_mbi_op.regs.op==2) {
+			result=iosf_mbi_modify(iosf_mbi_op.regs.port,iosf_mbi_op.regs.op,iosf_mbi_op.regs.reg,iosf_mbi_op.regs.data,iosf_mbi_op.regs.mask);
+			iosf_mbi_op.regs.op=0xffffffff;
+		}
+	}
+	mutex_unlock(&iosf_mbi_op_lock);
+
+	return result?AE_ERROR:AE_OK;
+}
+
+static int iosf_mbi_acpi_probe(struct platform_device *pdev)
+{
+	acpi_handle *handle;
+	acpi_status status;
+
+	if (!(handle=ACPI_HANDLE(&pdev->dev)))
+	{
+		dev_err(&pdev->dev,"Device as no acpi handle");
+		return -ENODEV;
+	}
+
+	if (ACPI_COMPANION(&pdev->dev)->dep_unmet)
+		return -EPROBE_DEFER;
+
+	if (!iosf_mbi_available())
+		return -EPROBE_DEFER;
+
+	mutex_init(&iosf_mbi_op_lock);
+
+	iosf_mbi_op.regs.op=0xffffffff;
+
+	status = acpi_install_address_space_handler(handle,
+			ACPI_OPREGION_ID,
+			iosf_mbi_acpi_opregion_handler,
+			NULL, NULL);
+
+	if (status != AE_OK)
+		return -ENODEV;
+
+	acpi_walk_dep_device_list(handle);
+
+	return 0;
+}
+
+static const struct acpi_device_id iosf_mbi_acpi_ids[] = {
+	{ ACPI_DEVICE_ID_BAYTRAIL },
+	{ },
+};
+MODULE_DEVICE_TABLE(acpi,iosf_mbi_acpi_ids);
+
+static struct platform_driver iosf_mbi_acpi_driver = {
+	.probe		= iosf_mbi_acpi_probe,
+	.driver		= {
+		.name	= "iosf_mbi_acpi",
+		.acpi_match_table = ACPI_PTR( iosf_mbi_acpi_ids ),
+	},
+};
+#endif
+
 static int __init iosf_mbi_init(void)
 {
 	iosf_debugfs_init();
 
+#ifdef CONFIG_ACPI
+	platform_driver_register(&iosf_mbi_acpi_driver);
+#endif
 	return pci_register_driver(&iosf_mbi_pci_driver);
 }
 
