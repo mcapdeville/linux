@@ -91,6 +91,8 @@ static int intel_soc_pmic_i2c_probe(struct i2c_client *i2c,
 	if (ret)
 		goto err_del_irq_chip;
 
+	acpi_walk_dep_device_list(ACPI_HANDLE(dev));
+
 	return 0;
 
 err_del_irq_chip:
