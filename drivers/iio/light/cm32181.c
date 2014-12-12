@@ -18,6 +18,12 @@
 #include <linux/iio/sysfs.h>
 #include <linux/iio/events.h>
 #include <linux/init.h>
+#ifdef CONFIG_ACPI
+#include <linux/acpi.h>
+#endif
+#ifdef CONFIG_I2C_SMBUS
+#include <linux/i2c-smbus.h>
+#endif
 
 /* Registers Address */
 #define CM32181_REG_ADDR_CMD		0x00
@@ -57,6 +63,7 @@ static const int als_it_value[] = {25000, 50000, 100000, 200000, 400000,
 
 struct cm32181_chip {
 	struct i2c_client *client;
+	struct i2c_client * ara;
 	struct mutex lock;
 	u16 conf_regs[CM32181_CONF_REG_NUM];
 	int calibscale;
@@ -77,11 +84,12 @@ static int cm32181_reg_init(struct cm32181_chip *cm32181)
 	s32 ret;
 
 	ret = i2c_smbus_read_word_data(client, CM32181_REG_ADDR_ID);
+
 	if (ret < 0)
 		return ret;
 
 	/* check device ID */
-	if ((ret & 0xFF) != 0x81)
+	if ((ret & 0xFF) != 0x81 && (ret & 0xFF) != 0x18)
 		return -ENODEV;
 
 	/* Default Values */
@@ -303,6 +311,7 @@ static int cm32181_probe(struct i2c_client *client,
 {
 	struct cm32181_chip *cm32181;
 	struct iio_dev *indio_dev;
+	struct i2c_smbus_alert_setup ara_setup;
 	int ret;
 
 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*cm32181));
@@ -323,6 +332,14 @@ static int cm32181_probe(struct i2c_client *client,
 	indio_dev->name = id->name;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
+#ifdef CONFIG_I2C_SMBUS
+	if (client->irq>0)
+	{
+		ara_setup.irq=client->irq;
+		ara_setup.alert_edge_triggered = 0;
+		cm32181->ara = i2c_setup_smbus_alert(client->adapter,&ara_setup);
+	}
+#endif
 	ret = cm32181_reg_init(cm32181);
 	if (ret) {
 		dev_err(&client->dev,
@@ -342,8 +359,20 @@ static int cm32181_probe(struct i2c_client *client,
 	return 0;
 }
 
+static int cm32181_remove(struct i2c_client *client)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm32181_chip *cm32181 = iio_priv(indio_dev);
+
+	if (cm32181->ara)
+		i2c_unregister_device(cm32181->ara);
+
+	return 0;
+};
+
 static const struct i2c_device_id cm32181_id[] = {
 	{ "cm32181", 0 },
+	{ "CPLM3218",1 },
 	{ }
 };
 
@@ -354,14 +383,27 @@ static const struct of_device_id cm32181_of_match[] = {
 	{ }
 };
 
+#ifdef CONFIG_ACPI
+static const struct acpi_device_id cm32181_acpi_match[] = {
+	{ "CPLM3218", 0 },
+	{ }
+};
+
+MODULE_DEVICE_TABLE(acpi, cm32181_acpi_match);
+#endif
+
 static struct i2c_driver cm32181_driver = {
 	.driver = {
 		.name	= "cm32181",
 		.of_match_table = of_match_ptr(cm32181_of_match),
+#ifdef CONFIG_ACPI
+		.acpi_match_table = ACPI_PTR(cm32181_acpi_match),
+#endif
 		.owner	= THIS_MODULE,
 	},
 	.id_table       = cm32181_id,
 	.probe		= cm32181_probe,
+	.remove		= cm32181_remove,
 };
 
 module_i2c_driver(cm32181_driver);
