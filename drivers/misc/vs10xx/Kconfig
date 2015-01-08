@@ -1,0 +1,6 @@
+config VS10XX
+	tristate "vs10xx platform driver"
+	default n
+	help
+		Kernel to vs10xx communication interface for the
+		vs1053 && vs1063 codecs from vlsi.

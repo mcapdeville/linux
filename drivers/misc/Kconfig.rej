@@ -1,0 +1,8 @@
+--- drivers/misc/Kconfig
++++ drivers/misc/Kconfig
+@@ -538,4 +538,5 @@
+ source "drivers/misc/mei/Kconfig"
+ source "drivers/misc/vmw_vmci/Kconfig"
+ source "drivers/misc/vc04_services/Kconfig"
++source "drivers/misc/vs10xx/Kconfig"
+ endmenu
