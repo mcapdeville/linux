@@ -38,6 +38,7 @@
 #include <linux/gpio/machine.h>
 #include <linux/w1-gpio.h>
 #include <linux/pps-gpio.h>
+#include <linux/gpio_keys.h>
 
 #include <linux/version.h>
 #include <linux/clkdev.h>
@@ -776,6 +777,64 @@ static struct i2c_board_info __initdata snd_wm8737_i2c_devices[] = {
 };
 #endif
 
+#if defined(CONFIG_GPIO_KEYS) || defined(CONFIG_GPIO_KEYS_MODULE)
+static struct gpio_keys_button sondbox_buttons[] = {
+	{
+		.code       = KEY_A,
+		.gpio       = 4,
+		.active_low = 0,
+		.desc       = "Att -20dB",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_I,
+		.gpio       = 25,
+		.active_low = 0,
+		.desc       = "Input select",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_P,
+		.gpio       = 26,
+		.active_low = 0,
+		.desc       = "Volume up",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_M,
+		.gpio       = 16,
+		.active_low = 0,
+		.desc       = "Volume down",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_O,
+		.gpio       = 23,
+		.active_low = 0,
+		.desc       = "Att -20dB",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+};
+
+static struct gpio_keys_platform_data sondbox_gpio_keys_platform_data = {
+	.buttons  = sondbox_buttons,
+	.nbuttons = ARRAY_SIZE(sondbox_buttons),
+};
+
+static struct platform_device sondbox_gpio_keys = {
+	.name = "gpio-keys",
+	.id   = -1,
+	.dev  = {
+		.platform_data = &sondbox_gpio_keys_platform_data,
+	},
+};
+#endif
+
 int __init bcm_register_device(struct platform_device *pdev)
 {
 	int ret;
@@ -992,6 +1051,10 @@ void __init bcm2708_init(void)
 	if (!use_dt)
 	    spi_register_board_info(bcm2708_spi_devices,
 				    ARRAY_SIZE(bcm2708_spi_devices));
+#endif
+
+#if defined(CONFIG_GPIO_KEYS) || defined(CONFIG_GPIO_KEYS_MODULES)
+	bcm_register_device(&sondbox_gpio_keys);
 #endif
 }
 
