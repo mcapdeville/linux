@@ -1168,6 +1168,24 @@ static struct gpio_led bcm2708_leds[] = {
 	       .default_trigger = "mmc0",
 	       .active_low = 1,
 	       },
+	{
+		.gpio = 5,
+		.name = "-3dB",
+		.default_trigger = "none",
+		.active_low = 1,
+	},
+	{
+		.gpio = 6,
+		.name = "-20dB",
+		.default_trigger = "none",
+		.active_low = 1,
+	},
+	{
+		.gpio = 13,
+		.name = "-40dB",
+		.default_trigger = "none",
+		.active_low = 1,
+	},
 };
 
 static struct gpio_led_platform_data bcm2708_led_pdata = {
