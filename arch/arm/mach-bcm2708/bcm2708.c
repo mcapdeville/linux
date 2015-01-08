@@ -61,6 +61,8 @@
 
 #include <linux/delay.h>
 
+#include <linux/vs10xx.h>
+
 #include "bcm2708.h"
 #include "armctrl.h"
 
@@ -557,8 +559,34 @@ static struct platform_device bcm2708_spi_device = {
 		.coherent_dma_mask = DMA_BIT_MASK(DMA_MASK_BITS_COMMON)},
 };
 
+#if defined(CONFIG_VS10XX) || defined(CONFIG_VS10XX_MODULE)
+struct vs10xx_board_info vs10xx_device_0 = {
+	.device_id  = 0,             // = /dev/vs10xx­0
+	.gpio_reset = 27,
+	.gpio_dreq  = 24
+};
+#endif
+
 #ifdef CONFIG_BCM2708_SPIDEV
 static struct spi_board_info bcm2708_spi_devices[] = {
+#if defined(CONFIG_VS10XX) || defined(CONFIG_VS10XX_MODULE)
+	{
+		/* device 0 on SPI bus 1, cs 0 */
+		.modalias      = VS10XX_SPI_CTRL,
+		.bus_num       = 0,
+		.chip_select   = 0,
+		.platform_data = &vs10xx_device_0,
+		.max_speed_hz   = 1 * 1000 * 1000,
+	},
+	{
+		/* device 0 on SPI bus 1, cs 0 */
+		.modalias      = VS10XX_SPI_DATA,
+		.bus_num       = 0,
+		.chip_select   = 1,
+		.platform_data = &vs10xx_device_0,
+		.max_speed_hz   = 12 * 1000 * 1000,
+	},
+#endif
 #ifdef CONFIG_SPI_SPIDEV
 	{
 		.modalias = "spidev",
@@ -729,6 +757,21 @@ static struct platform_device snd_rpi_iqaudio_dac_device = {
 static struct i2c_board_info __initdata snd_pcm512x_i2c_devices[] = {
 	{
 		I2C_BOARD_INFO("pcm5122", 0x4c)
+	},
+};
+#endif
+
+#if defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC) || defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC_MODULE)
+static struct platform_device snd_sondbox_device = {
+        .name = "snd-sondbox-adc",
+        .id = 0,
+        .num_resources = 0,
+};
+
+// Use the actual device name rather than generic driver name
+static struct i2c_board_info __initdata snd_wm8737_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("wm8737", 0x1a)
 	},
 };
 #endif
@@ -930,6 +973,11 @@ void __init bcm2708_init(void)
 #if defined(CONFIG_SND_BCM2708_SOC_IQAUDIO_DAC) || defined(CONFIG_SND_BCM2708_SOC_IQAUDIO_DAC_MODULE)
         bcm_register_device_dt(&snd_rpi_iqaudio_dac_device);
         i2c_register_board_info_dt(1, snd_pcm512x_i2c_devices, ARRAY_SIZE(snd_pcm512x_i2c_devices));
+#endif
+
+#if defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC) || defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC_MODULE)
+        bcm_register_device(&snd_sondbox_device);
+        i2c_register_board_info(1, snd_wm8737_i2c_devices, ARRAY_SIZE(snd_wm8737_i2c_devices));
 #endif
 
 
