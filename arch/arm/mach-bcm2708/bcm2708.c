@@ -777,7 +777,9 @@ static struct i2c_board_info __initdata snd_wm8737_i2c_devices[] = {
 };
 #endif
 
-#if defined(CONFIG_GPIO_KEYS) || defined(CONFIG_GPIO_KEYS_MODULE)
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+#include <linux/input.h>
+
 static struct gpio_keys_button sondbox_buttons[] = {
 	{
 		.code       = KEY_A,
@@ -815,7 +817,7 @@ static struct gpio_keys_button sondbox_buttons[] = {
 		.code       = KEY_O,
 		.gpio       = 23,
 		.active_low = 0,
-		.desc       = "Att -20dB",
+		.desc       = "On air",
 		.type       = EV_KEY,
 		.wakeup     = 0,
 	},
@@ -1053,7 +1055,7 @@ void __init bcm2708_init(void)
 				    ARRAY_SIZE(bcm2708_spi_devices));
 #endif
 
-#if defined(CONFIG_GPIO_KEYS) || defined(CONFIG_GPIO_KEYS_MODULES)
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
 	bcm_register_device(&sondbox_gpio_keys);
 #endif
 }
@@ -1172,19 +1174,67 @@ static struct gpio_led bcm2708_leds[] = {
 		.gpio = 5,
 		.name = "-3dB",
 		.default_trigger = "none",
-		.active_low = 1,
+		.active_low = 0,
 	},
 	{
 		.gpio = 6,
 		.name = "-20dB",
 		.default_trigger = "none",
-		.active_low = 1,
+		.active_low = 0,
 	},
 	{
 		.gpio = 13,
 		.name = "-40dB",
 		.default_trigger = "none",
-		.active_low = 1,
+		.active_low = 0,
+	},
+	{
+		.gpio = 64,
+		.name = "vs10xx-0",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 65,
+		.name = "vs10xx-1",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 66,
+		.name = "vs10xx-2",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 67,
+		.name = "vs10xx-3",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 68,
+		.name = "vs10xx-4",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 69,
+		.name = "vs10xx-5",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 70,
+		.name = "vs10xx-6",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 71,
+		.name = "vs10xx-7",
+		.default_trigger = "none",
+		.active_low = 0,
 	},
 };
 
