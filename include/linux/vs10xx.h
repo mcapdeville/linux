@@ -74,6 +74,9 @@ enum {
 	VS10XX_SCI_AICTRL3
 };
 
+#define VS10XX_GPIO_DDR		0xC017
+#define VS10XX_GPIO_IDATA	0xC018
+#define VS10XX_GPIO_ODATA	0xC019
 
 struct vs10xx_scireg {
 	unsigned char reg; /* 0..15  */

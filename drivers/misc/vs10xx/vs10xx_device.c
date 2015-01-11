@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
+#include <linux/gpio.h>
 
 /* clockf value */
 static int clockf = 0xc800;
@@ -51,6 +52,10 @@ struct vs10xx_device_t {
 	wait_queue_head_t wq;
 	unsigned long underrun;
 	int version;
+	struct gpio_chip gc;
+	unsigned short gpio_ddr;
+	unsigned short gpio_idata;
+	unsigned short gpio_odata;
 };
 
 static struct vs10xx_device_t vs10xx_device[VS10XX_MAX_DEVICES];
@@ -816,6 +821,90 @@ int vs10xx_device_status(int id, char* buf) {
 }
 
 /* ----------------------------------------------------------------------------------------------------------------------------- */
+/* VS10XX DEVICE GPIO INTERFACE                                                                                                       */
+/* ----------------------------------------------------------------------------------------------------------------------------- */
+
+static int vs10xx_gpio_dir_in(struct gpio_chip *gc,unsigned offset){
+	int id = container_of(gc,struct vs10xx_device_t,gc)->id;
+
+	mutex_lock(&vs10xx_device[id].lock);
+	
+	vs10xx_device[id].gpio_ddr &= ~(1<<offset);
+
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_DDR>>8,VS10XX_GPIO_DDR&0xff);
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAM,vs10xx_device[id].gpio_ddr>>8,vs10xx_device[id].gpio_ddr&0xff);
+
+	mutex_unlock(&vs10xx_device[id].lock);
+
+	return 0;
+}
+
+static int vs10xx_gpio_get(struct gpio_chip *gc,unsigned offset){
+	int id = container_of(gc,struct vs10xx_device_t,gc)->id;
+	int val ;
+
+	mutex_lock(&vs10xx_device[id].lock);
+	
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_IDATA>>8,VS10XX_GPIO_IDATA&0xff);
+	vs10xx_device_r_sci_reg(id,VS10XX_SCI_WRAM,((char*)(&vs10xx_device[id].gpio_idata))+1,(char*)(&vs10xx_device[id].gpio_idata));
+
+	val = (vs10xx_device[id].gpio_idata>>offset) & 1;
+
+	mutex_unlock(&vs10xx_device[id].lock);
+
+	return val;
+}
+
+static int vs10xx_gpio_dir_out(struct gpio_chip *gc,unsigned offset, int val){
+	int id = container_of(gc,struct vs10xx_device_t,gc)->id;
+
+	mutex_lock(&vs10xx_device[id].lock);
+	
+	vs10xx_device[id].gpio_ddr |= 1<<offset;
+
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_DDR>>8,VS10XX_GPIO_DDR&0xff);
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAM,vs10xx_device[id].gpio_ddr>>8,vs10xx_device[id].gpio_ddr&0xff);
+
+	mutex_unlock(&vs10xx_device[id].lock);
+
+	return 0;
+}
+
+static void vs10xx_gpio_set(struct gpio_chip *gc,unsigned offset, int val){
+	int id = container_of(gc,struct vs10xx_device_t,gc)->id;
+
+	mutex_lock(&vs10xx_device[id].lock);
+	
+	vs10xx_device[id].gpio_odata &= ~(1<<offset);
+	vs10xx_device[id].gpio_odata |= (!!val)<<offset;
+
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_ODATA>>8,VS10XX_GPIO_ODATA&0xff);
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAM,vs10xx_device[id].gpio_odata>>8,vs10xx_device[id].gpio_odata&0xff);
+
+	mutex_unlock(&vs10xx_device[id].lock);
+
+}
+ 
+static int vs10xx_gpio_init(struct gpio_chip *gc){
+	int id = container_of(gc,struct vs10xx_device_t,gc)->id;
+
+	mutex_lock(&vs10xx_device[id].lock);
+	
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_IDATA>>8,VS10XX_GPIO_IDATA&0xff);
+	vs10xx_device_r_sci_reg(id,VS10XX_SCI_WRAM,((char*)(&vs10xx_device[id].gpio_idata))+1,(char*)(&vs10xx_device[id].gpio_idata));
+
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_ODATA>>8,VS10XX_GPIO_ODATA&0xff);
+	vs10xx_device_r_sci_reg(id,VS10XX_SCI_WRAM,((char*)(&vs10xx_device[id].gpio_odata))+1,(char*)(&vs10xx_device[id].gpio_odata));
+
+	vs10xx_device_w_sci_reg(id,VS10XX_SCI_WRAMADDR,VS10XX_GPIO_DDR>>8,VS10XX_GPIO_DDR&0xff);
+	vs10xx_device_r_sci_reg(id,VS10XX_SCI_WRAM,((char*)(&vs10xx_device[id].gpio_ddr))+1,(char*)(&vs10xx_device[id].gpio_ddr));
+
+	mutex_unlock(&vs10xx_device[id].lock);
+
+	return 0;
+}
+
+/* ----------------------------------------------------------------------------------------------------------------------------- */
 /* VS10XX DEVICE INIT/EXIT                                                                                                       */
 /* ----------------------------------------------------------------------------------------------------------------------------- */
 
@@ -844,10 +933,8 @@ int vs10xx_device_init(int id, struct device *dev) {
 	/* reset device */
 	status = vs10xx_device_reset(id);
 
-	if (status ==0) {
-		vs10xx_io_set_ctrl_clock(id,1*1000*1000);
-		vs10xx_io_set_data_clock(id,12*1000*1000);
-	}
+	vs10xx_io_set_ctrl_clock(id,1*1000*1000);
+	vs10xx_io_set_data_clock(id,12*1000*1000);
 
 	if (status == 0) {
 
@@ -863,6 +950,25 @@ int vs10xx_device_init(int id, struct device *dev) {
 
 	if (status == 0) {
 
+		vs10xx_device[id].gc.label = "vs10xx_gpio";
+		vs10xx_device[id].gc.base = 64 + 8*id;
+		vs10xx_device[id].gc.ngpio = 8;
+		vs10xx_device[id].gc.owner = THIS_MODULE;
+
+		vs10xx_device[id].gc.direction_input = vs10xx_gpio_dir_in;
+		vs10xx_device[id].gc.direction_output = vs10xx_gpio_dir_out;
+		vs10xx_device[id].gc.get = vs10xx_gpio_get;
+		vs10xx_device[id].gc.set = vs10xx_gpio_set;
+		vs10xx_device[id].gc.can_sleep = 1;
+
+		// Initialize gpio shadow register
+		vs10xx_gpio_init(&vs10xx_device[id].gc);
+
+		status = gpiochip_add(&vs10xx_device[id].gc);
+	}
+
+	if (status == 0) {
+
 		/* flag valid */
 		vs10xx_device[id].valid = 1;
 	}
@@ -873,8 +979,9 @@ int vs10xx_device_init(int id, struct device *dev) {
 }
 
 void vs10xx_device_exit(int id) {
-
 	if (vs10xx_device_isvalid(id)) {
+
+		(void) gpiochip_remove(&vs10xx_device[id].gc);
 
 		vs10xx_io_set_ctrl_clock(id,1*1000*1000);
 		vs10xx_io_set_data_clock(id,12*1000*1000);
