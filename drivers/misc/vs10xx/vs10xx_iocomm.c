@@ -166,6 +166,50 @@ int vs10xx_io_ctrl_xf(int id, const char *txbuf, unsigned txlen, char *rxbuf, un
 	return status;
 }
 
+int vs10xx_io_ctrl_xfdata(int id, const char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen, unsigned repeat) {
+
+	struct spi_device *device = vs10xx_chips[id].spi_ctrl;
+	struct spi_message	spi_mesg;
+	struct spi_transfer	*spi_xfer_tx;
+	struct spi_transfer	*spi_xfer_rx;
+	char			*rxptr=rxbuf;
+	int status = 0,i;
+
+	spi_message_init(&spi_mesg);
+
+	spi_xfer_tx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
+	spi_xfer_rx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
+
+	for (i=0 ; i< repeat ; i++)
+	{
+		if (txbuf) {
+			spi_xfer_tx[i].tx_buf = txbuf;
+			spi_xfer_tx[i].len = txlen;
+			spi_xfer_tx[i].delay_usecs = rxbuf ? 0 : 10;
+			spi_message_add_tail(&(spi_xfer_tx[i]), &spi_mesg);
+		}
+
+		if (rxbuf) {
+			spi_xfer_rx[i].rx_buf = rxptr;
+			spi_xfer_rx[i].len = rxlen;
+			spi_xfer_rx[i].delay_usecs = 10;
+			spi_xfer_rx[i].cs_change = 1;
+			spi_message_add_tail(&(spi_xfer_rx[i]), &spi_mesg);
+			rxptr+=rxlen;
+		}
+	}
+
+	status = spi_sync(device, &spi_mesg);
+
+	if (status < 0) {
+		vs10xx_err("id:%d spi_sync failed (%d)", id, status);
+	}
+
+	kfree(spi_xfer_rx);
+	kfree(spi_xfer_tx);
+	return status;
+}
+
 int vs10xx_io_data_rx(int id, char *rxbuf, unsigned rxlen) {
 
 	struct spi_device *device = vs10xx_chips[id].spi_data;
@@ -422,6 +466,18 @@ int vs10xx_io_init(int id) {
 	}
 
 	return status;
+}
+
+int vs10xx_io_set_ctrl_clock(int id,int Hz)
+{
+	vs10xx_chips[id].spi_ctrl->max_speed_hz=Hz;
+	return spi_setup(vs10xx_chips[id].spi_ctrl);
+}
+
+int vs10xx_io_set_data_clock(int id,int Hz)
+{
+	vs10xx_chips[id].spi_data->max_speed_hz=Hz;
+	return spi_setup(vs10xx_chips[id].spi_data);
 }
 
 void vs10xx_io_exit(int id) {

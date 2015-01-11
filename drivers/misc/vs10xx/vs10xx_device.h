@@ -41,7 +41,7 @@ int vs10xx_device_memtest(int id);
 int vs10xx_device_getscireg(int id, struct vs10xx_scireg *scireg);
 int vs10xx_device_setscireg(int id, struct vs10xx_scireg *scireg);
 
-int vs10xx_device_get_scidata(int id, char * rxbuf, unsigned *rxlen );
+int vs10xx_device_get_scidata(int id, short * rxbuf, unsigned int rxlen );
 
 int vs10xx_device_getclockf(int id, struct vs10xx_clockf *clkf);
 int vs10xx_device_setclockf(int id, struct vs10xx_clockf *clkf);
