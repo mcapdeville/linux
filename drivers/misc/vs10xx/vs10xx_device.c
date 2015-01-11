@@ -28,7 +28,7 @@
 #include <linux/module.h>
 
 /* clockf value */
-static int clockf = 0xe000;
+static int clockf = 0xc800;
 module_param(clockf, int, 0644);
 
 /* plugin to load */
@@ -71,7 +71,7 @@ static int vs10xx_device_w_sci_reg(int id, unsigned char reg, unsigned char msb,
 
 		vs10xx_nsy("id:%d %02X %02X%02X", id, (int)cmd[1], (int)cmd[2], (int)cmd[3]);
 
-		if (!vs10xx_io_wtready(id, 10)) {
+		if (!vs10xx_io_wtready(id, 100)) {
 
 			vs10xx_err("id:%d timeout (reg=%x)", id, reg);
 
@@ -98,7 +98,7 @@ static int vs10xx_device_r_sci_reg(int id, unsigned char reg, unsigned char* msb
 
 		vs10xx_nsy("id:%d %02X %02X%02X", id, (int)cmd[1], (int)res[0], (int)res[1]);
 
-		if (!vs10xx_io_wtready(id, 10)) {
+		if (!vs10xx_io_wtready(id, 100)) {
 
 			vs10xx_err("id:%d timeout (reg=%x)", id, reg);
 			status = -1;
@@ -179,7 +179,7 @@ static void vs10xx_device_hwreset(int id) {
 
 	vs10xx_io_reset(id);
 
-	if (!vs10xx_io_wtready(id, 50)) {
+	if (!vs10xx_io_wtready(id, 100)) {
 
 		vs10xx_wrn("id:%d timeout", id);
 	}
@@ -400,46 +400,16 @@ int vs10xx_device_setscireg(int id, struct vs10xx_scireg *scireg) {
 	return status;
 }
 
+int vs10xx_device_get_scidata(int id, short * rxbuf, unsigned int rxlen ) {
 
-int vs10xx_device_get_scidata(int id, char * rxbuf, unsigned *rxlen ) {
-
-	int status = 0,len;
-	unsigned char cmd[] = {0x03, 0x09};
-	unsigned char res[] = {0x00, 0x00};
+	int status = 0;
+	unsigned char cmd[] = {0x03, 0x08};
 
 	mutex_lock(&vs10xx_device[id].lock);
 
-	if (status == 0) {
+	vs10xx_io_ctrl_xfdata(id,&cmd[0],sizeof(cmd),(char*)rxbuf,sizeof(*rxbuf),rxlen); 
 
-		cmd[1] = 0x09;
-		status = vs10xx_io_ctrl_xf(id, cmd, sizeof(cmd), res, sizeof(res));
-
-		len = (((int)res[0])<<9) | (((int)res[1])<<1);
-
-		if (len < *rxlen)
-		       *rxlen = len;
-
-		if (!vs10xx_io_wtready(id, 10)) {
-
-			vs10xx_err("id:%d timeout (reg=%x)", id, cmd[1]);
-			status = -1;
-		}
-	}
-
-	if (status == 0) {
-
-		cmd[1] = 0x08;
-
-		status = vs10xx_io_ctrl_xf(id, cmd, sizeof(cmd), rxbuf, *rxlen);
-
-		if (!vs10xx_io_wtready(id, 10)) {
-
-			vs10xx_err("id:%d timeout (reg=%x)", id, cmd[1]);
-			status = -1;
-		}
-	}
-
-	mutex_lock(&vs10xx_device[id].lock);
+	mutex_unlock(&vs10xx_device[id].lock);
 
 	return status;
 }
@@ -670,7 +640,7 @@ static int vs10xx_device_kthread(void *arg) {
 				}
 			}
 
-		} else if (!vs10xx_io_wtready(device->id, 10)) {
+		} else if (!vs10xx_io_wtready(device->id, 100)) {
 
 			/* io not ready to receive */
 			vs10xx_nsy("id:%d not ready", device->id);
@@ -761,7 +731,7 @@ int vs10xx_device_release(int id) {
 	// bufsize = 32 => send 384 (FLAC) of 65 (other) buffers
 	for (i = (info.fmt==VS10XX_FMT_FLC?384:65); i > 0; i--) {
 
-		vs10xx_io_wtready(id, 10);
+		vs10xx_io_wtready(id, 100);
 
 		status = vs10xx_io_data_tx(id, buffer.data, buffer.len);
 	}
@@ -775,7 +745,7 @@ int vs10xx_device_release(int id) {
 
 		status = vs10xx_io_data_tx(id, buffer.data, buffer.len);
 
-		vs10xx_io_wtready(id, 10);
+		vs10xx_io_wtready(id, 100);
 
 		status = vs10xx_device_r_sci_reg(id, 0x00, &msb, &lsb);
 
@@ -874,6 +844,11 @@ int vs10xx_device_init(int id, struct device *dev) {
 	/* reset device */
 	status = vs10xx_device_reset(id);
 
+	if (status ==0) {
+		vs10xx_io_set_ctrl_clock(id,1*1000*1000);
+		vs10xx_io_set_data_clock(id,12*1000*1000);
+	}
+
 	if (status == 0) {
 
 		/* start device thread */
@@ -901,6 +876,9 @@ void vs10xx_device_exit(int id) {
 
 	if (vs10xx_device_isvalid(id)) {
 
+		vs10xx_io_set_ctrl_clock(id,1*1000*1000);
+		vs10xx_io_set_data_clock(id,12*1000*1000);
+		
 		/* reset device */
 		vs10xx_device_hwreset(id);
 

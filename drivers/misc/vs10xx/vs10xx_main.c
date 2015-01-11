@@ -125,33 +125,41 @@ static ssize_t vs10xx_read(struct file *file, char __user *usrbuf, size_t lbuf, 
 	int id = (int)file->private_data;
 	int status = 0;
 
-	int nbytes = 0;
-	int acttodo = 0;
-	int copied = 0;
+	unsigned short ndata = 0;
+	unsigned short acttodo = 0;
+	unsigned short copied = 0;
 
-	char buffer[32];
+	short buffer[128];
+
+	struct vs10xx_scireg scireg = { VS10XX_SCI_HDAT1,0,0};
 
 	vs10xx_nsy("id:%d", id);
 
+	if ((status = vs10xx_device_getscireg(id, &scireg)) == 0) {
+		ndata = (scireg.msb<<8) | scireg.lsb;
+		if (ndata > (lbuf>>1))
+			ndata = lbuf>>1;
+	}
+
+	if (ndata == 0)
+		return 0;
+
 	do {
 
-		acttodo = sizeof(buffer) > (lbuf-copied) ? (lbuf-copied) : sizeof(buffer);
+		acttodo = (sizeof(buffer)/sizeof(*buffer)) > (ndata-copied) ? (ndata-copied) : (sizeof(buffer)/sizeof(*buffer));
+	
+		if ((status = vs10xx_device_get_scidata(id, buffer,acttodo)) == 0) {
+			if (copy_to_user(usrbuf+(copied<<1), buffer, acttodo<<1))
+				printk("erreur de copie en espace utilisateur\n");
 
-		if (acttodo&1)
-			acttodo--;
+			copied += acttodo;
+		}
+	} while (copied < ndata && !status);
 
-		nbytes=acttodo;
-		status = vs10xx_device_get_scidata(id,buffer,&nbytes);
-
-		nbytes = nbytes - copy_to_user(usrbuf+copied, buffer, nbytes);
-
-		copied += nbytes;
-
-	} while (copied < lbuf && acttodo==nbytes && !status);
 
 	vs10xx_nsy("id:%d copied %d bytes", id, copied);
 
-	return (status < 0 ? status : copied);
+	return (status<0 ? status : (copied<<1));
 }
 
 static long vs10xx_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
@@ -166,6 +174,7 @@ static long vs10xx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct vs10xx_tone tone;
 	struct vs10xx_info info;
 
+	printk("In vs10xx_ioctl : type %d r %d size %d \n",ioctype,iocnr,iocsize);
 	if (ioctype != VS10XX_CTL_TYPE) {
 		vs10xx_dbg("id:%d unsupported ioctl type:%c nr:%d", id, ioctype, iocnr);
 		return -EINVAL;
