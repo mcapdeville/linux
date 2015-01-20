@@ -46,7 +46,7 @@ struct wm8737_priv {
 	unsigned int mclk;
 };
 
-static const struct reg_default wm8737_reg_defaults[] = {
+static struct reg_default wm8737_reg_defaults[] = {
 	{  0, 0x00C3 },     /* R0  - Left PGA volume */
 	{  1, 0x00C3 },     /* R1  - Right PGA volume */
 	{  2, 0x0007 },     /* R2  - AUDIO path L */
@@ -63,6 +63,38 @@ static const struct reg_default wm8737_reg_defaults[] = {
 	{ 13, 0x0000 },     /* R13 - ALC2 */
 	{ 14, 0x0032 },     /* R14 - ALC3 */
 };
+
+module_param_named(R0, wm8737_reg_defaults[0].def, int, 0444);
+module_param_named(R1, wm8737_reg_defaults[1].def, int, 0444);
+module_param_named(R2, wm8737_reg_defaults[2].def, int, 0444);
+module_param_named(R3, wm8737_reg_defaults[3].def, int, 0444);
+module_param_named(R4, wm8737_reg_defaults[4].def, int, 0444);
+module_param_named(R5, wm8737_reg_defaults[5].def, int, 0444);
+module_param_named(R6, wm8737_reg_defaults[6].def, int, 0444);
+module_param_named(R7, wm8737_reg_defaults[7].def, int, 0444);
+module_param_named(R8, wm8737_reg_defaults[8].def, int, 0444);
+module_param_named(R9, wm8737_reg_defaults[9].def, int, 0444);
+module_param_named(R10, wm8737_reg_defaults[10].def, int, 0444);
+module_param_named(R11, wm8737_reg_defaults[11].def, int, 0444);
+module_param_named(R12, wm8737_reg_defaults[12].def, int, 0444);
+module_param_named(R13, wm8737_reg_defaults[13].def, int, 0444);
+module_param_named(R14, wm8737_reg_defaults[14].def, int, 0444);
+
+MODULE_PARM_DESC(R0, "   Left PGA volume");
+MODULE_PARM_DESC(R1, "   Right PGA volume");
+MODULE_PARM_DESC(R2, "   AUDIO path L");
+MODULE_PARM_DESC(R3, "   AUDIO path R");
+MODULE_PARM_DESC(R4, "   3D Enhance");
+MODULE_PARM_DESC(R5, "   ADC Control");
+MODULE_PARM_DESC(R6, "   Power Management");
+MODULE_PARM_DESC(R7, "   Audio Format");
+MODULE_PARM_DESC(R8, "   Clocking");
+MODULE_PARM_DESC(R9, "   MIC Preamp Control");
+MODULE_PARM_DESC(R10, "  Misc Bias Control");
+MODULE_PARM_DESC(R11, "  Noise Gate");
+MODULE_PARM_DESC(R12, "  ALC1");
+MODULE_PARM_DESC(R13, "  ALC2");
+MODULE_PARM_DESC(R14, "  ALC3");
 
 static bool wm8737_volatile(struct device *dev, unsigned int reg)
 {
