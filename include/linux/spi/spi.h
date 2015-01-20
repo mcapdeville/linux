@@ -298,6 +298,12 @@ static inline void spi_unregister_driver(struct spi_driver *sdrv)
  *                    are set, the generic subsystem does not call your
  *                    transfer_one callback.
  * @unprepare_message: undo any work done by prepare_message().
+ * @optimize_message: allow computation of optimizations of a spi message
+ *                    this may set up the corresponding DMA transfers
+ *                    or do other work that need not get computed every
+ *                    time a message gets executed
+ *                    Not called from interrupt context.
+ * @unoptimize_message: undo any work done by @optimize_message().
  * @cs_gpios: Array of GPIOs to use as chip select lines; one per CS
  *	number. Any individual value may be -ENOENT for CS lines that
  *	are not GPIOs (driven by the SPI controller itself).
@@ -442,7 +448,8 @@ struct spi_master {
 			       struct spi_message *message);
 	int (*unprepare_message)(struct spi_master *master,
 				 struct spi_message *message);
-
+	int (*optimize_message)(struct spi_message *message);
+	void (*unoptimize_message)(struct spi_message *message);
 	/*
 	 * These hooks are for drivers that use a generic implementation
 	 * of transfer_one_message() provied by the core.
@@ -544,6 +551,8 @@ extern struct spi_master *spi_busnum_to_master(u16 busnum);
  * @delay_usecs: microseconds to delay after this transfer before
  *	(optionally) changing the chipselect status, then starting
  *	the next transfer or completing this @spi_message.
+ * @vary: allows a driver to mark a SPI transfer as "modifyable" on the
+ *      specific pieces of information
  * @transfer_list: transfers are sequenced through @spi_message.transfers
  * @tx_sg: Scatterlist for transmit, currently not for client use
  * @rx_sg: Scatterlist for receive, currently not for client use
@@ -626,6 +635,12 @@ struct spi_transfer {
 	u8		bits_per_word;
 	u16		delay_usecs;
 	u32		speed_hz;
+#define SPI_OPTIMIZE_VARY_TX_BUF               (1<<0)
+#define SPI_OPTIMIZE_VARY_RX_BUF               (1<<1)
+#define SPI_OPTIMIZE_VARY_SPEED_HZ             (1<<2)
+#define SPI_OPTIMIZE_VARY_DELAY_USECS          (1<<3)
+#define SPI_OPTIMIZE_VARY_LENGTH               (1<<4)
+	u32             vary;
 
 	struct list_head transfer_list;
 };
@@ -636,6 +651,9 @@ struct spi_transfer {
  * @spi: SPI device to which the transaction is queued
  * @is_dma_mapped: if true, the caller provided both dma and cpu virtual
  *	addresses for each transfer buffer
+ * @is_optimized: if true, then the spi_message has been processed with
+ *      spi_message_optimize() - @state belongs to the spi-driver now
+ *      and may not get set by the driver
  * @complete: called to report transaction completions
  * @context: the argument to complete() when it's called
  * @frame_length: the total number of bytes in the message
@@ -665,6 +683,8 @@ struct spi_message {
 	struct spi_device	*spi;
 
 	unsigned		is_dma_mapped:1;
+#define SPI_HAVE_OPTIMIZE
+	unsigned                is_optimized:1;
 
 	/* REVISIT:  we might want a flag affecting the behavior of the
 	 * last transfer ... allowing things like "read 16 bit length L"
@@ -697,6 +717,9 @@ static inline void spi_message_init(struct spi_message *m)
 	memset(m, 0, sizeof *m);
 	INIT_LIST_HEAD(&m->transfers);
 }
+
+int spi_message_optimize(struct spi_device *s,struct spi_message *m);
+void spi_message_unoptimize(struct spi_message *m);
 
 static inline void
 spi_message_add_tail(struct spi_transfer *t, struct spi_message *m)
