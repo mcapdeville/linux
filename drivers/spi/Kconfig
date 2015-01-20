@@ -35,6 +35,10 @@ config SPI_DEBUG
 	  Say "yes" to enable debug messaging (like dev_dbg and pr_debug),
 	  sysfs, and debugfs support in SPI controller and protocol drivers.
 
+config SPI_DMAFRAGMENT
+	tristate "SPI dma-fragment helper"
+	select DMA_FRAGMENT
+
 #
 # MASTER side ... talking to discrete SPI slave chips including microcontrollers
 #
@@ -85,6 +89,14 @@ config SPI_BCM2835
 	  "universal SPI master", and the regular SPI controller. This driver
 	  is for the regular SPI controller. Slave mode operation is not also
 	  not supported.
+
+config SPI_BCM2835DMA
+	tristate "BCM2835 SPI controler with dma-fragment support"
+	depends on ARCH_BCM2835 || ARCH_BCM2708 || COMPILE_TEST
+	select SPI_DMAFRAGMENT
+	select BCM2835_DMA_DEBUG
+	help
+	  This driver support dma transfere.
 
 config SPI_BCM2708
 	tristate "BCM2708 SPI controller driver (SPI0)"

@@ -28,8 +28,13 @@ config DMADEVICES_VDEBUG
           say N here.  This enables deeper (more verbose) debugging of
           the DMA engine core and drivers.
 
-
 if DMADEVICES
+
+config DMA_FRAGMENT
+	tristate "Support for dma fragment"
+	depends on DMADEVICES
+	help
+	  This add suport for chained dma requests.
 
 comment "DMA Devices"
 
@@ -330,6 +335,10 @@ config DMA_BCM2835
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
 
+config BCM2835_DMA_DEBUG
+	tristate "Debug helper for bcm2835 dma"
+	depends on ARCH_BCM2708 || ARCH_BCM2835
+
 config DMA_BCM2708
 	tristate "BCM2708 DMA engine support"
 	depends on MACH_BCM2708 || MACH_BCM2709
@@ -391,7 +400,6 @@ config XILINX_VDMA
 	select DMA_ENGINE
 	help
 	  Enable support for Xilinx AXI VDMA Soft IP.
-
 	  This engine provides high-bandwidth direct memory access
 	  between memory and AXI4-Stream video type target
 	  peripherals including peripherals which support AXI4-

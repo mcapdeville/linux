@@ -86,3 +86,6 @@ obj-$(CONFIG_SPI_TXX9)			+= spi-txx9.o
 obj-$(CONFIG_SPI_XCOMM)		+= spi-xcomm.o
 obj-$(CONFIG_SPI_XILINX)		+= spi-xilinx.o
 obj-$(CONFIG_SPI_XTENSA_XTFPGA)		+= spi-xtensa-xtfpga.o
+obj-$(CONFIG_SPI_BCM2835DMA)		+= spi-bcm2835dma.o
+spi-bcm2835dma-y			:= spi-bcm2835dma_drv.o spi-bcm2835dma_frag.o
+obj-$(CONFIG_SPI_DMAFRAGMENT)		+= spi-dmafragment.o
