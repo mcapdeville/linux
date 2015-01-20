@@ -290,9 +290,9 @@ static ssize_t vs10xx_sys_status_r(struct device *dev, struct device_attribute *
 	return vs10xx_device_status(id, buf);
 }
 
-static const DEVICE_ATTR(reset, 0222, NULL, vs10xx_sys_reset_w);
-static const DEVICE_ATTR(test, 0666, NULL, vs10xx_sys_test_w);
-static const DEVICE_ATTR(status, 0444, vs10xx_sys_status_r, NULL);
+static const DEVICE_ATTR(reset, S_IWUSR, NULL, vs10xx_sys_reset_w);
+static const DEVICE_ATTR(test, S_IWUSR, NULL, vs10xx_sys_test_w);
+static const DEVICE_ATTR(status, S_IRUGO, vs10xx_sys_status_r, NULL);
 
 static const struct attribute *vs10xx_attrs[] = {
 	&dev_attr_reset.attr,
