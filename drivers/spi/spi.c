@@ -2014,9 +2014,16 @@ int spi_async(struct spi_device *spi, struct spi_message *message)
 	int ret;
 	unsigned long flags;
 
-	ret = __spi_validate(spi, message);
-	if (ret != 0)
-		return ret;
+	if (message->is_optimized) {
+		if (spi != message->spi)
+			return -EINVAL;
+	} else {
+		message->spi=spi;
+		ret = __spi_validate(spi, message);
+
+		if (ret != 0)
+			return ret;
+	}
 
 	spin_lock_irqsave(&master->bus_lock_spinlock, flags);
 
@@ -2081,6 +2088,48 @@ int spi_async_locked(struct spi_device *spi, struct spi_message *message)
 }
 EXPORT_SYMBOL_GPL(spi_async_locked);
 
+/**
+ * spi_message_optimize - optimize a message for repeated use minimizing
+ *   processing overhead
+ *
+ * @spi: device with which data will be exchanged
+ * @message: describes the data transfers, including completion callback
+ * Context: can sleep
+ */
+int spi_message_optimize(struct spi_device *spi,
+			struct spi_message *message)
+{
+	int ret = 0;
+	if (message->is_optimized)
+		spi_message_unoptimize(message);
+
+	message->spi = spi;
+	ret = __spi_validate(spi,message);
+	if (ret)
+		return ret;
+
+	if (spi->master->optimize_message)
+		ret = spi->master->optimize_message(message);
+	if (ret)
+		return ret;
+
+	message->is_optimized = 1;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(spi_message_optimize);
+
+void spi_message_unoptimize(struct spi_message *message)
+{
+	if (!message->is_optimized)
+		return;
+
+	if (message->spi->master->unoptimize_message)
+		message->spi->master->unoptimize_message(message);
+
+	message->is_optimized = 0;
+}
+EXPORT_SYMBOL_GPL(spi_message_unoptimize);
 
 /*-------------------------------------------------------------------------*/
 

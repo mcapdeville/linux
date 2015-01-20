@@ -1,0 +1,50 @@
+--- drivers/spi/spi.c
++++ drivers/spi/spi.c
+@@ -1596,15 +1596,12 @@
+ }
+ EXPORT_SYMBOL_GPL(spi_setup);
+ 
+-static int __spi_async(struct spi_device *spi, struct spi_message *message)
++static inline int __spi_verify(struct spi_device *spi,
++			struct spi_message *message)
+ {
+ 	struct spi_master *master = spi->master;
+ 	struct spi_transfer *xfer;
+ 
+-	message->spi = spi;
+-
+-	trace_spi_message_submit(message);
+-
+ 	if (list_empty(&message->transfers))
+ 		return -EINVAL;
+ 	if (!message->complete)
+@@ -1703,9 +1700,28 @@
+ 				return -EINVAL;
+ 		}
+ 	}
++	return 0;
++}
++
++static int __spi_async(struct spi_device *spi, struct spi_message *message)
++{
++	struct spi_master *master = spi->master;
++	int ret = 0;
++
++	trace_spi_message_submit(message);
++
++	if (message->is_optimized) {
++		if (spi != message->spi)
++			return -EINVAL;
++	} else {
++		message->spi = spi;
++		ret = __spi_verify(spi,message);
++		if (ret)
++			return ret;
++	}
+ 
+ 	message->status = -EINPROGRESS;
+-	return master->transfer(spi, message);
++	return spi->master->transfer(spi, message);
+ }
+ 
+ /**
