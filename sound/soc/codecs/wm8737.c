@@ -203,7 +203,7 @@ SOC_DOUBLE("Polarity Invert Switch", WM8737_ADC_CONTROL, 5, 6, 1, 0),
 SOC_SINGLE("3D Switch", WM8737_3D_ENHANCE, 0, 1, 0),
 SOC_SINGLE("3D Depth", WM8737_3D_ENHANCE, 1, 15, 0),
 SOC_ENUM("3D Low Cut-off", low_3d),
-SOC_ENUM("3D High Cut-off", low_3d),
+SOC_ENUM("3D High Cut-off", high_3d),
 SOC_SINGLE_TLV("3D ADC Volume", WM8737_3D_ENHANCE, 7, 1, 1, adc_tlv),
 
 SOC_SINGLE("Noise Gate Switch", WM8737_NOISE_GATE, 0, 1, 0),
@@ -385,7 +385,7 @@ static int wm8737_hw_params(struct snd_pcm_substream *substream,
 		if (coeff_div[i].mclk == wm8737->mclk)
 			break;
 
-		if (coeff_div[i].mclk == wm8737->mclk * 2) {
+		if (coeff_div[i].mclk == wm8737->mclk / 2) {
 			clocking |= WM8737_CLKDIV2;
 			break;
 		}
@@ -403,13 +403,13 @@ static int wm8737_hw_params(struct snd_pcm_substream *substream,
 	case 16:
 		break;
 	case 20:
-		af |= 0x8;
+		af |= 0x4;
 		break;
 	case 24:
-		af |= 0x10;
+		af |= 0x8;
 		break;
 	case 32:
-		af |= 0x18;
+		af |= 0xC;
 		break;
 	default:
 		return -EINVAL;
@@ -526,7 +526,7 @@ static int wm8737_set_bias_level(struct snd_soc_codec *codec,
 
 			/* Fast VMID ramp at 2*2.5k */
 			snd_soc_update_bits(codec, WM8737_MISC_BIAS_CONTROL,
-					    WM8737_VMIDSEL_MASK, 0x4);
+					    WM8737_VMIDSEL_MASK, 0x8);
 
 			/* Bring VMID up */
 			snd_soc_update_bits(codec, WM8737_POWER_MANAGEMENT,
@@ -540,7 +540,7 @@ static int wm8737_set_bias_level(struct snd_soc_codec *codec,
 
 		/* VMID at 2*300k */
 		snd_soc_update_bits(codec, WM8737_MISC_BIAS_CONTROL,
-				    WM8737_VMIDSEL_MASK, 2);
+				    WM8737_VMIDSEL_MASK, 4);
 
 		break;
 
