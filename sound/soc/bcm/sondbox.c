@@ -21,6 +21,10 @@
 #include <sound/soc.h>
 #include <sound/jack.h>
 
+static int sysclk = 12288000;
+module_param_named(sysclk, sysclk , int, 0444);
+MODULE_PARM_DESC(sysclk, "Input clock to wm8737");
+
 static const unsigned int wm8737_rates_12288000[] = {
     8000, 12000, 16000, 24000, 32000, 48000, 96000,
 };
@@ -85,7 +89,6 @@ static int sondbox_hw_params(struct snd_pcm_substream *substream,
     struct snd_soc_pcm_runtime *rtd = substream->private_data;
     struct snd_soc_dai *codec_dai = rtd->codec_dai;
     struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-    int sysclk = 12288000;
     unsigned int sample_bits = snd_pcm_format_physical_width(
                                                   params_format(params));
 
@@ -154,7 +157,7 @@ static int sondbox_remove(struct platform_device *pdev)
 
 static struct platform_driver sondbox_driver = {
     .driver = {
-        .name = "snd-rpi-dac",
+        .name = "snd-sondbox-adc",
         .owner = THIS_MODULE,
     },
     .probe = sondbox_probe,
@@ -163,6 +166,7 @@ static struct platform_driver sondbox_driver = {
 
 module_platform_driver(sondbox_driver);
 
+MODULE_ALIAS("platform:snd-sondbox-adc");
 MODULE_AUTHOR("Maric Michaud <maric@lesondier.com>");
 MODULE_DESCRIPTION("ASoC Driver for Raspberry Pi connected to WM8737");
 MODULE_LICENSE("GPL");
