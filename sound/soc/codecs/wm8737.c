@@ -96,7 +96,7 @@ MODULE_PARM_DESC(R12, "  ALC1");
 MODULE_PARM_DESC(R13, "  ALC2");
 MODULE_PARM_DESC(R14, "  ALC3");
 
-int clkdiv=-1;
+static int clkdiv=-1;
 module_param_named(clkdiv, clkdiv, int, 0444);
 MODULE_PARM_DESC(clkdiv, " -1:auto(default) 0:off 1:on");
 
@@ -206,7 +206,7 @@ SOC_DOUBLE("Polarity Invert Switch", WM8737_ADC_CONTROL, 5, 6, 1, 0),
 SOC_SINGLE("3D Switch", WM8737_3D_ENHANCE, 0, 1, 0),
 SOC_SINGLE("3D Depth", WM8737_3D_ENHANCE, 1, 15, 0),
 SOC_ENUM("3D Low Cut-off", low_3d),
-SOC_ENUM("3D High Cut-off", low_3d),
+SOC_ENUM("3D High Cut-off", high_3d),
 SOC_SINGLE_TLV("3D ADC Volume", WM8737_3D_ENHANCE, 7, 1, 1, adc_tlv),
 
 SOC_SINGLE("Noise Gate Switch", WM8737_NOISE_GATE, 0, 1, 0),
@@ -377,7 +377,7 @@ static int wm8737_hw_params(struct snd_pcm_substream *substream,
 		if (coeff_div[i].mclk == wm8737->mclk)
 			break;
 
-		if (coeff_div[i].mclk == wm8737->mclk * 2) {
+		if (coeff_div[i].mclk*2 == wm8737->mclk) {
 			clocking |= WM8737_CLKDIV2;
 			break;
 		}
@@ -400,13 +400,13 @@ static int wm8737_hw_params(struct snd_pcm_substream *substream,
 	case 16:
 		break;
 	case 20:
-		af |= 0x8;
+		af |= 0x4;
 		break;
 	case 24:
-		af |= 0x10;
+		af |= 0x8;
 		break;
 	case 32:
-		af |= 0x18;
+		af |= 0xC;
 		break;
 	default:
 		return -EINVAL;
