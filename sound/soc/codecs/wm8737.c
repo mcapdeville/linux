@@ -96,6 +96,10 @@ MODULE_PARM_DESC(R12, "  ALC1");
 MODULE_PARM_DESC(R13, "  ALC2");
 MODULE_PARM_DESC(R14, "  ALC3");
 
+int clkdiv=-1;
+module_param_named(clkdiv, clkdiv, int, 0444);
+MODULE_PARM_DESC(clkdiv, " -1:auto(default) 0:off 1:on");
+
 static bool wm8737_volatile(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -384,6 +388,11 @@ static int wm8737_hw_params(struct snd_pcm_substream *substream,
 			wm8737->mclk, params_rate(params));
 		return -EINVAL;
 	}
+
+	if (clkdiv==0)
+		clocking &= ~WM8737_CLKDIV2;
+	else if (clkdiv == 1)
+		clocking |= WM8737_CLKDIV2;
 
 	clocking |= coeff_div[i].usb | (coeff_div[i].sr << WM8737_SR_SHIFT);
 
