@@ -174,7 +174,6 @@ static long vs10xx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct vs10xx_tone tone;
 	struct vs10xx_info info;
 
-	printk("In vs10xx_ioctl : type %d r %d size %d \n",ioctype,iocnr,iocsize);
 	if (ioctype != VS10XX_CTL_TYPE) {
 		vs10xx_dbg("id:%d unsupported ioctl type:%c nr:%d", id, ioctype, iocnr);
 		return -EINVAL;
