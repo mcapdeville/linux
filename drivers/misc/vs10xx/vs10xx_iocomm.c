@@ -27,6 +27,7 @@
 #include <linux/spi/spi.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
+#include <linux/wait.h>
 
 /* interrupt mode */
 static int irqmode = 1;
@@ -48,7 +49,9 @@ struct vs10xx_chip {
 	struct spi_device *spi_ctrl;
 	struct spi_device *spi_data;
 	wait_queue_head_t wq;
+	spinlock_t dreq_lock;
 };
+
 
 static struct vs10xx_chip vs10xx_chips[VS10XX_MAX_DEVICES];
 
@@ -96,10 +99,13 @@ int vs10xx_io_wtready(int id, unsigned timeout) {
 
 	if (irqmode) {
 
-		if (!vs10xx_chips[id].dreq_val) {
+		spin_lock_irq(&vs10xx_chips[id].dreq_lock);
 
-			wait_event_timeout(vs10xx_chips[id].wq, vs10xx_chips[id].dreq_val, msecs_to_jiffies(timeout));
+		if (!vs10xx_chips[id].dreq_val) {
+			wait_event_interruptible_lock_irq_timeout(vs10xx_chips[id].wq, vs10xx_chips[id].dreq_val, vs10xx_chips[id].dreq_lock, msecs_to_jiffies(timeout));
 		}
+
+		spin_unlock_irq(&vs10xx_chips[id].dreq_lock);
 
 	} else {
 
@@ -402,6 +408,10 @@ int vs10xx_io_init(int id) {
 
 			/* initialize wait queue */
 			init_waitqueue_head(&chip->wq);
+
+			/* initialize spin_lock */
+			spin_lock_init(&chip->dreq_lock);
+
 
 			/* request reset signal */
 			status = gpio_request(chip->gpio_reset, "vs10xx_reset");
