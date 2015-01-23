@@ -93,7 +93,7 @@ static int sondbox_hw_params(struct snd_pcm_substream *substream,
                                                   params_format(params));
 
     /* Set proto bclk */
-    int ret = snd_soc_dai_set_bclk_ratio(cpu_dai, sample_bits*2);
+    int ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
     if (ret < 0){
         dev_err(substream->pcm->dev, "Failed to set BCLK ratio %d\n", ret);
         return ret;
