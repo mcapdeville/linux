@@ -141,7 +141,7 @@ static void intel_dsi_enable(struct intel_encoder *encoder)
 	struct intel_crtc *intel_crtc = to_intel_crtc(encoder->base.crtc);
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
 	struct intel_connector *intel_connector =
-		&intel_dsi->attached_connector->base;
+		intel_dsi->attached_connector;
 	int pipe = intel_crtc->pipe;
 	u32 temp;
 
@@ -242,7 +242,7 @@ static void intel_dsi_disable(struct intel_encoder *encoder)
 	struct intel_crtc *intel_crtc = to_intel_crtc(encoder->base.crtc);
 	struct intel_dsi *intel_dsi = enc_to_intel_dsi(&encoder->base);
 	struct intel_connector *intel_connector =
-		&intel_dsi->attached_connector->base;
+		intel_dsi->attached_connector;
 	int pipe = intel_crtc->pipe;
 	u32 temp;
 
@@ -795,7 +795,7 @@ void intel_dsi_init(struct drm_device *dev)
 
 	fixed_mode->type |= DRM_MODE_TYPE_PREFERRED;
 	intel_panel_init(&intel_connector->panel, fixed_mode, NULL);
-	intel_panel_setup_backlight(connector);
+	intel_panel_setup_backlight(connector,0);
 
 	return;
 
