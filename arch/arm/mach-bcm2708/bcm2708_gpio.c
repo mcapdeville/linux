@@ -352,6 +352,9 @@ static int bcm2708_gpio_probe(struct platform_device *dev)
 	ucb->gc.set = bcm2708_gpio_set;
 	ucb->gc.can_sleep = 0;
 
+	/* Hack for setting pull-up/down on sondbox hardware */
+	bcm2708_gpio_setpull(&ucb->gc, 4 , BCM2708_PULL_DOWN );
+
 	bcm2708_gpio_irq_init(ucb);
 
 	err = gpiochip_add(&ucb->gc);
