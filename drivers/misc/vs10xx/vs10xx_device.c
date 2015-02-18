@@ -75,13 +75,6 @@ static int vs10xx_device_w_sci_reg(int id, unsigned char reg, unsigned char msb,
 		status = vs10xx_io_ctrl_xf(id, cmd, sizeof(cmd), NULL, 0);
 
 		vs10xx_nsy("id:%d %02X %02X%02X", id, (int)cmd[1], (int)cmd[2], (int)cmd[3]);
-
-		if (!vs10xx_io_wtready(id, 100)) {
-
-			vs10xx_err("id:%d timeout (reg=%x)", id, reg);
-
-			status = -1;
-		}
 	}
 
 	return status;
@@ -102,12 +95,6 @@ static int vs10xx_device_r_sci_reg(int id, unsigned char reg, unsigned char* msb
 		*lsb = res[1];
 
 		vs10xx_nsy("id:%d %02X %02X%02X", id, (int)cmd[1], (int)res[0], (int)res[1]);
-
-		if (!vs10xx_io_wtready(id, 100)) {
-
-			vs10xx_err("id:%d timeout (reg=%x)", id, reg);
-			status = -1;
-		}
 	}
 
 	return status;
