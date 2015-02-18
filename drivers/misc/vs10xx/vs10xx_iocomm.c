@@ -28,6 +28,7 @@
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/wait.h>
+#include <linux/dma-mapping.h>
 
 /* interrupt mode */
 static int irqmode = 1;
@@ -40,6 +41,10 @@ module_param(skipdreq, int, 0644);
 /* hwreset */
 static int hwreset = 0;
 module_param(hwreset, int, 0644);
+
+/* hwreset */
+static int use_dma = 0;
+module_param(use_dma, int, 0644);
 
 struct vs10xx_chip {
 	int dreq_val;
@@ -138,19 +143,26 @@ void vs10xx_io_reset(int id) {
 /* VS10XX SPI TRANSFER                                                                                                           */
 /* ----------------------------------------------------------------------------------------------------------------------------- */
 
-int vs10xx_io_ctrl_xf(int id, const char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen) {
+int vs10xx_io_ctrl_xf(int id, char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen) {
 
 	struct spi_device *device = vs10xx_chips[id].spi_ctrl;
 	struct spi_message	spi_mesg;
 	struct spi_transfer	spi_xfer_tx;
 	struct spi_transfer	spi_xfer_rx;
 	int status = 0;
+	dma_addr_t dma_base_tx=0;
+	dma_addr_t dma_base_rx=0;
 
 	spi_message_init(&spi_mesg);
 
 	if (txbuf) {
 		memset(&spi_xfer_tx, 0, sizeof spi_xfer_tx);
 		spi_xfer_tx.tx_buf = txbuf;
+		if (use_dma) {
+			dma_base_tx = dma_map_single (&vs10xx_chips[id].spi_ctrl->dev, txbuf,txlen,DMA_TO_DEVICE);
+			spi_mesg.is_dma_mapped = 1;
+			spi_xfer_tx.tx_dma = dma_base_tx;
+		}
 		spi_xfer_tx.len = txlen;
 		spi_xfer_tx.delay_usecs = rxbuf ? 0 : 10;
 		spi_message_add_tail(&spi_xfer_tx, &spi_mesg);
@@ -159,6 +171,11 @@ int vs10xx_io_ctrl_xf(int id, const char *txbuf, unsigned txlen, char *rxbuf, un
 	if (rxbuf) {
 		memset(&spi_xfer_rx, 0, sizeof spi_xfer_rx);
 		spi_xfer_rx.rx_buf = rxbuf;
+		if (use_dma) {
+			dma_base_rx = dma_map_single (&vs10xx_chips[id].spi_ctrl->dev, rxbuf,rxlen,DMA_FROM_DEVICE);
+			spi_mesg.is_dma_mapped = 1;
+			spi_xfer_rx.rx_dma = dma_base_rx;
+		}
 		spi_xfer_rx.len = rxlen;
 		spi_xfer_rx.delay_usecs = 10;
 		spi_message_add_tail(&spi_xfer_rx, &spi_mesg);
@@ -169,27 +186,54 @@ int vs10xx_io_ctrl_xf(int id, const char *txbuf, unsigned txlen, char *rxbuf, un
 		vs10xx_err("id:%d spi_sync failed", id);
 	}
 
+	if (use_dma) {
+	       if (rxbuf)
+			dma_unmap_single(&vs10xx_chips[id].spi_ctrl->dev,dma_base_rx,rxlen,DMA_FROM_DEVICE);
+	       if (txbuf)
+			dma_unmap_single(&vs10xx_chips[id].spi_ctrl->dev,dma_base_tx,txlen,DMA_TO_DEVICE);
+	}
+
 	return status;
 }
 
-int vs10xx_io_ctrl_xfdata(int id, const char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen, unsigned repeat) {
+int vs10xx_io_ctrl_xfdata(int id, char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen, unsigned repeat) {
 
 	struct spi_device *device = vs10xx_chips[id].spi_ctrl;
 	struct spi_message	spi_mesg;
 	struct spi_transfer	*spi_xfer_tx;
 	struct spi_transfer	*spi_xfer_rx;
 	char			*rxptr=rxbuf;
+	dma_addr_t dma_base_tx=0,dma_base_rx=0;
+	dma_addr_t dma_rx_ptr=0;
 	int status = 0,i;
 
 	spi_message_init(&spi_mesg);
 
-	spi_xfer_tx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
+	if (txbuf) {
+		if (use_dma) {
+			dma_base_tx = dma_map_single (&vs10xx_chips[id].spi_ctrl->dev, txbuf,txlen,DMA_TO_DEVICE);
+			spi_mesg.is_dma_mapped = 1;
+		}
+		spi_xfer_tx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
+	}
+
+	if (rxbuf) {
+		if (use_dma) {
+			dma_base_rx = dma_map_single (&vs10xx_chips[id].spi_ctrl->dev, rxbuf,rxlen*repeat,DMA_FROM_DEVICE);
+			dma_rx_ptr = dma_base_rx;
+			spi_mesg.is_dma_mapped = 1;
+		}
+		spi_xfer_rx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
+	}
+
 	spi_xfer_rx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
 
 	for (i=0 ; i< repeat ; i++)
 	{
 		if (txbuf) {
 			spi_xfer_tx[i].tx_buf = txbuf;
+			if (use_dma)
+				spi_xfer_tx[i].tx_dma = dma_base_tx;
 			spi_xfer_tx[i].len = txlen;
 			spi_xfer_tx[i].delay_usecs = rxbuf ? 0 : 10;
 			spi_message_add_tail(&(spi_xfer_tx[i]), &spi_mesg);
@@ -197,11 +241,14 @@ int vs10xx_io_ctrl_xfdata(int id, const char *txbuf, unsigned txlen, char *rxbuf
 
 		if (rxbuf) {
 			spi_xfer_rx[i].rx_buf = rxptr;
+			if (use_dma)
+				spi_xfer_rx[i].rx_dma = dma_rx_ptr;
 			spi_xfer_rx[i].len = rxlen;
 			spi_xfer_rx[i].delay_usecs = 10;
 			spi_xfer_rx[i].cs_change = 1;
 			spi_message_add_tail(&(spi_xfer_rx[i]), &spi_mesg);
 			rxptr+=rxlen;
+			dma_rx_ptr+=rxlen;
 		}
 	}
 
@@ -211,8 +258,19 @@ int vs10xx_io_ctrl_xfdata(int id, const char *txbuf, unsigned txlen, char *rxbuf
 		vs10xx_err("id:%d spi_sync failed (%d)", id, status);
 	}
 
-	kfree(spi_xfer_rx);
-	kfree(spi_xfer_tx);
+	if (rxbuf)
+	{
+		kfree(spi_xfer_rx);
+		if (use_dma)
+			dma_unmap_single(&vs10xx_chips[id].spi_ctrl->dev,dma_base_rx,rxlen*repeat,DMA_FROM_DEVICE);
+	}
+
+	if (txbuf) {
+		kfree(spi_xfer_tx);
+		if (use_dma)
+			dma_unmap_single(&vs10xx_chips[id].spi_ctrl->dev,dma_base_tx,txlen,DMA_TO_DEVICE);
+	}
+
 	return status;
 }
 
@@ -222,13 +280,18 @@ int vs10xx_io_data_rx(int id, char *rxbuf, unsigned rxlen) {
 	struct spi_message	spi_mesg;
 	struct spi_transfer	spi_xfer_rx;
 	int status = 0;
+	dma_addr_t dma_base_rx=0;
 
 	spi_message_init(&spi_mesg);
 
 	memset(&spi_xfer_rx, 0, sizeof spi_xfer_rx);
 	spi_xfer_rx.rx_buf = rxbuf;
+	if (use_dma) {
+		dma_base_rx = dma_map_single (&vs10xx_chips[id].spi_data->dev, rxbuf,rxlen,DMA_FROM_DEVICE);
+		spi_mesg.is_dma_mapped = 1;
+		spi_xfer_rx.rx_dma = dma_base_rx;
+	}
 	spi_xfer_rx.len = rxlen;
-	//spi_xfer_rx.delay_usecs = 0;
 	spi_message_add_tail(&spi_xfer_rx, &spi_mesg);
 
 	status = spi_sync(device, &spi_mesg);
@@ -236,28 +299,39 @@ int vs10xx_io_data_rx(int id, char *rxbuf, unsigned rxlen) {
 		vs10xx_err("id:%d spi_sync failed", id);
 	}
 
+	if(use_dma)
+		dma_unmap_single(&vs10xx_chips[id].spi_data->dev,dma_base_rx,rxlen,DMA_FROM_DEVICE);
+
 	return status;
 }
 
-int vs10xx_io_data_tx(int id, const char *txbuf, unsigned txlen) {
+int vs10xx_io_data_tx(int id, char *txbuf, unsigned txlen) {
 
 	struct spi_device *device = vs10xx_chips[id].spi_data;
 	struct spi_message	spi_mesg;
 	struct spi_transfer	spi_xfer_tx;
 	int status = 0;
+	dma_addr_t dma_base_tx=0;
 
 	spi_message_init(&spi_mesg);
 
 	memset(&spi_xfer_tx, 0, sizeof spi_xfer_tx);
 	spi_xfer_tx.tx_buf = txbuf;
+	if (use_dma) {
+		dma_base_tx = dma_map_single (&vs10xx_chips[id].spi_data->dev, txbuf,txlen,DMA_TO_DEVICE);
+		spi_mesg.is_dma_mapped = 1;
+		spi_xfer_tx.tx_dma = dma_base_tx;
+	}
 	spi_xfer_tx.len = txlen;
-	//spi_xfer_tx.delay_usecs = 0;
 	spi_message_add_tail(&spi_xfer_tx, &spi_mesg);
 
 	status = spi_sync(device, &spi_mesg);
 	if (status < 0) {
 		vs10xx_err("id:%d spi_sync failed", id);
 	}
+
+	if (use_dma)
+		dma_unmap_single(&vs10xx_chips[id].spi_data->dev,dma_base_tx,txlen,DMA_TO_DEVICE);
 
 	return status;
 }
@@ -294,6 +368,14 @@ static int vs10xx_spi_ctrl_probe(struct spi_device *spi) {
 
 		if (vs10xx_chips[boardinfo->device_id].spi_ctrl && vs10xx_chips[boardinfo->device_id].spi_data)
 			status = vs10xx_create_device(boardinfo->device_id);
+	}
+
+	if (use_dma) {
+		if (dma_set_mask(&spi->dev,0xffffffff) == 0)
+		{
+			vs10xx_inf("id:%d ctrl spi: cant set dma_mask\n",boardinfo->device_id);
+			use_dma=0;
+		}
 	}
 
 	return status;
@@ -336,6 +418,14 @@ static int vs10xx_spi_data_probe(struct spi_device *spi) {
 
 		if (vs10xx_chips[boardinfo->device_id].spi_ctrl && vs10xx_chips[boardinfo->device_id].spi_data)
 			status = vs10xx_create_device(boardinfo->device_id);
+	}
+
+	if (use_dma) {
+		if (dma_set_mask(&spi->dev,0xffffffff) == 0)
+		{
+			vs10xx_inf("id:%d data spi: cant set dma_mask\n",boardinfo->device_id);
+			use_dma=0;
+		}
 	}
 
 	return status;
