@@ -29,7 +29,7 @@
 #include <linux/gpio.h>
 
 /* clockf value */
-static int clockf = 0xc800;
+static int clockf = 0xe000;
 module_param(clockf, int, 0644);
 
 /* plugin to load */
@@ -234,6 +234,8 @@ int vs10xx_device_reset(int id) {
 
 	vs10xx_queue_flush(id);
 
+	vs10xx_io_set_ctrl_clock(id,1*1000*1000);
+
 	vs10xx_device_hwreset(id);
 
 	status = vs10xx_device_swreset(id, 0);
@@ -282,6 +284,9 @@ int vs10xx_device_reset(int id) {
 
 		unsigned char buffer[2] = { 0, 0 };
 		status = vs10xx_io_data_tx(id, buffer, 2);
+
+		//vs10xx_io_set_ctrl_clock(id,4*1000*1000);
+		vs10xx_io_set_ctrl_clock(id,1*1000*1000);
 	}
 
 	mutex_unlock(&vs10xx_device[id].lock);
@@ -930,11 +935,11 @@ int vs10xx_device_init(int id, struct device *dev) {
 	/* initialize wait queue */
 	init_waitqueue_head(&vs10xx_device[id].wq);
 
-	/* reset device */
-	status = vs10xx_device_reset(id);
-
 	vs10xx_io_set_ctrl_clock(id,1*1000*1000);
 	vs10xx_io_set_data_clock(id,12*1000*1000);
+
+	/* reset device */
+	status = vs10xx_device_reset(id);
 
 	if (status == 0) {
 
