@@ -30,10 +30,17 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/spi/spi.h>
+#include <linux/pagemap.h>
+#include <asm/page.h>
+#include <linux/mm.h>
+#include <linux/highmem.h>
 
 static int debug = 0;
 int *vs10xx_debug = &debug;
 module_param(debug, int, 0644);
+
+int use_direct=1;
+module_param(use_direct, int, 0644);
 
 MODULE_DESCRIPTION("device driver for vs10xx");
 MODULE_AUTHOR("Richard van Paasen");
@@ -129,7 +136,12 @@ static ssize_t vs10xx_read(struct file *file, char __user *usrbuf, size_t lbuf, 
 	unsigned short acttodo = 0;
 	unsigned short copied = 0;
 
-	short buffer[128];
+	short buffer[256];
+
+
+	int npages,pagenum;
+	struct page ** pages;
+	char * page_addr;
 
 	struct vs10xx_scireg scireg = { VS10XX_SCI_HDAT1,0,0};
 
@@ -144,18 +156,54 @@ static ssize_t vs10xx_read(struct file *file, char __user *usrbuf, size_t lbuf, 
 	if (ndata == 0)
 		return 0;
 
-	do {
+	if (use_direct) { // directio
+		npages = ((ndata<<1)+PAGE_SIZE-1)>>PAGE_SHIFT;
+		pages = kmalloc(npages*sizeof(struct page *),GFP_KERNEL);
+		if (!pages)
+			return -ENOMEM;
 
-		acttodo = (sizeof(buffer)/sizeof(*buffer)) > (ndata-copied) ? (ndata-copied) : (sizeof(buffer)/sizeof(*buffer));
-	
-		if ((status = vs10xx_device_get_scidata(id, buffer,acttodo)) == 0) {
-			if (copy_to_user(usrbuf+(copied<<1), buffer, acttodo<<1))
-				printk("erreur de copie en espace utilisateur\n");
-
-			copied += acttodo;
+		down_read(&current->mm->mmap_sem);
+		if ((npages = get_user_pages(current, current->mm, (unsigned long int)usrbuf, npages, 1, 0, pages, NULL)) == 0) {
+			up_read(&current->mm->mmap_sem);
+			kfree(pages);
+			return -ENOMEM;
 		}
-	} while (copied < ndata && !status);
+		up_read(&current->mm->mmap_sem);
 
+		pagenum=0;
+		do {
+
+			page_addr = kmap(pages[pagenum]);
+			acttodo = (PAGE_SIZE>>1) > (ndata-copied) ? (ndata-copied) : (PAGE_SIZE>>1);
+		
+			if ((status = vs10xx_device_get_scidata(id, (short*)page_addr, acttodo)) == 0) {
+				copied += acttodo;
+				if (!PageReserved(pages[pagenum]))
+					SetPageDirty(pages[pagenum]);
+			}
+
+			kunmap(pages[pagenum]);
+
+			page_cache_release(pages[pagenum]);
+
+			pagenum++;
+		} while (copied < ndata && !status && pagenum<npages);
+
+		for (;pagenum<npages;pagenum++)
+			page_cache_release(pages[pagenum]);
+	}
+	else {
+		do {
+			acttodo = (sizeof(buffer)/sizeof(*buffer)) > (ndata-copied) ? (ndata-copied) : (sizeof(buffer)/sizeof(*buffer));
+
+			if ((status = vs10xx_device_get_scidata(id, buffer,acttodo)) == 0) {
+				if (copy_to_user(usrbuf+(copied<<1), buffer, acttodo<<1))
+					printk("erreur de copie en espace utilisateur\n");
+
+				copied += acttodo;
+			}
+		} while (copied < ndata && !status);
+	}
 
 	vs10xx_nsy("id:%d copied %d bytes", id, copied);
 
