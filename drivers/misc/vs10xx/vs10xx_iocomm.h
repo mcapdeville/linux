@@ -30,10 +30,10 @@ void vs10xx_io_reset(int id);
 int vs10xx_io_isready(int id);
 int vs10xx_io_wtready(int id, unsigned timeout);
 
-int vs10xx_io_ctrl_xf(int id, const char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen);
-int vs10xx_io_ctrl_xfdata(int id, const char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen, unsigned repeat); 
+int vs10xx_io_ctrl_xf(int id, char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen);
+int vs10xx_io_ctrl_xfdata(int id, char *txbuf, unsigned txlen, char *rxbuf, unsigned rxlen, unsigned repeat); 
 int vs10xx_io_data_rx(int id, char *rxbuf, unsigned rxlen);
-int vs10xx_io_data_tx(int id, const char *txbuf, unsigned txlen);
+int vs10xx_io_data_tx(int id, char *txbuf, unsigned txlen);
 
 int vs10xx_io_set_ctrl_clock(int id,int Hz);
 int vs10xx_io_set_data_clock(int id,int Hz);
