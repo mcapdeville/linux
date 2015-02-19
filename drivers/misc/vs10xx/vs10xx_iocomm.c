@@ -226,8 +226,6 @@ int vs10xx_io_ctrl_xfdata(int id, char *txbuf, unsigned txlen, char *rxbuf, unsi
 		spi_xfer_rx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
 	}
 
-	spi_xfer_rx = kzalloc(sizeof( struct spi_transfer )*repeat,GFP_KERNEL);
-
 	for (i=0 ; i< repeat ; i++)
 	{
 		if (txbuf) {
