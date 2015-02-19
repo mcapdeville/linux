@@ -89,3 +89,4 @@ obj-$(CONFIG_SPI_XTENSA_XTFPGA)		+= spi-xtensa-xtfpga.o
 obj-$(CONFIG_SPI_BCM2835DMA)		+= spi-bcm2835dma.o
 spi-bcm2835dma-y			:= spi-bcm2835dma_drv.o spi-bcm2835dma_frag.o
 obj-$(CONFIG_SPI_DMAFRAGMENT)		+= spi-dmafragment.o
+obj-$(CONFIG_SPI_BCM2708DMA)		+= spi-bcm2708dma.o

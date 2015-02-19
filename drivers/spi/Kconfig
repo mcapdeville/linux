@@ -106,6 +106,12 @@ config SPI_BCM2708
 	  driver is not compatible with the "Universal SPI Master" or the SPI slave
 	  device.
 
+config SPI_BCM2708DMA
+	tristate "BCM2835 SPI controler with dma-fragment support"
+	depends on ARCH_BCM2835 || ARCH_BCM2708 || COMPILE_TEST
+	help
+	  This driver support dma transfere.
+
 config SPI_BFIN5XX
 	tristate "SPI controller driver for ADI Blackfin5xx"
 	depends on BLACKFIN && !BF60x
