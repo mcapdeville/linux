@@ -38,6 +38,7 @@
 #include <linux/gpio/machine.h>
 #include <linux/w1-gpio.h>
 #include <linux/pps-gpio.h>
+#include <linux/gpio_keys.h>
 
 #include <linux/version.h>
 #include <linux/clkdev.h>
@@ -61,6 +62,8 @@
 #include <mach/system.h>
 
 #include <linux/delay.h>
+
+#include <linux/vs10xx.h>
 
 #include "bcm2709.h"
 #include "armctrl.h"
@@ -579,8 +582,34 @@ static struct platform_device bcm2708_spi_device = {
 		.coherent_dma_mask = DMA_BIT_MASK(DMA_MASK_BITS_COMMON)},
 };
 
+#if defined(CONFIG_VS10XX) || defined(CONFIG_VS10XX_MODULE)
+struct vs10xx_board_info vs10xx_device_0 = {
+	.device_id  = 0,             // = /dev/vs10xx­0
+	.gpio_reset = 27,
+	.gpio_dreq  = 24
+};
+#endif
+
 #ifdef CONFIG_BCM2708_SPIDEV
 static struct spi_board_info bcm2708_spi_devices[] = {
+#if defined(CONFIG_VS10XX) || defined(CONFIG_VS10XX_MODULE)
+	{
+		/* device 0 on SPI bus 1, cs 0 */
+		.modalias      = VS10XX_SPI_CTRL,
+		.bus_num       = 0,
+		.chip_select   = 0,
+		.platform_data = &vs10xx_device_0,
+		.max_speed_hz   = 1 * 1000 * 1000,
+	},
+	{
+		/* device 0 on SPI bus 1, cs 0 */
+		.modalias      = VS10XX_SPI_DATA,
+		.bus_num       = 0,
+		.chip_select   = 1,
+		.platform_data = &vs10xx_device_0,
+		.max_speed_hz   = 12 * 1000 * 1000,
+	},
+#endif
 #ifdef CONFIG_SPI_SPIDEV
 	{
 		.modalias = "spidev",
@@ -751,6 +780,81 @@ static struct platform_device snd_rpi_iqaudio_dac_device = {
 static struct i2c_board_info __initdata snd_pcm512x_i2c_devices[] = {
 	{
 		I2C_BOARD_INFO("pcm5122", 0x4c)
+	},
+};
+#endif
+
+#if defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC) || defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC_MODULE)
+static struct platform_device snd_sondbox_device = {
+        .name = "snd-sondbox-adc",
+        .id = 0,
+        .num_resources = 0,
+};
+
+// Use the actual device name rather than generic driver name
+static struct i2c_board_info __initdata snd_wm8737_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("wm8737", 0x1a)
+	},
+};
+#endif
+
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+#include <linux/input.h>
+
+static struct gpio_keys_button sondbox_buttons[] = {
+	{
+		.code       = KEY_A,
+		.gpio       = 4,
+		.active_low = 0,
+		.desc       = "Att -20dB",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_I,
+		.gpio       = 25,
+		.active_low = 0,
+		.desc       = "Input select",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_P,
+		.gpio       = 26,
+		.active_low = 0,
+		.desc       = "Volume up",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_M,
+		.gpio       = 16,
+		.active_low = 0,
+		.desc       = "Volume down",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+	{
+		.code       = KEY_O,
+		.gpio       = 23,
+		.active_low = 0,
+		.desc       = "On air",
+		.type       = EV_KEY,
+		.wakeup     = 0,
+	},
+};
+
+static struct gpio_keys_platform_data sondbox_gpio_keys_platform_data = {
+	.buttons  = sondbox_buttons,
+	.nbuttons = ARRAY_SIZE(sondbox_buttons),
+};
+
+static struct platform_device sondbox_gpio_keys = {
+	.name = "gpio-keys",
+	.id   = -1,
+	.dev  = {
+		.platform_data = &sondbox_gpio_keys_platform_data,
 	},
 };
 #endif
@@ -954,6 +1058,11 @@ void __init bcm2709_init(void)
         i2c_register_board_info_dt(1, snd_pcm512x_i2c_devices, ARRAY_SIZE(snd_pcm512x_i2c_devices));
 #endif
 
+#if defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC) || defined(CONFIG_SND_BCM2708_SOC_SONDBOX_ADC_MODULE)
+        bcm_register_device(&snd_sondbox_device);
+        i2c_register_board_info(1, snd_wm8737_i2c_devices, ARRAY_SIZE(snd_wm8737_i2c_devices));
+#endif
+
 
 	for (i = 0; i < ARRAY_SIZE(amba_devs); i++) {
 		struct amba_device *d = amba_devs[i];
@@ -966,6 +1075,10 @@ void __init bcm2709_init(void)
 	if (!use_dt)
 	    spi_register_board_info(bcm2708_spi_devices,
 				    ARRAY_SIZE(bcm2708_spi_devices));
+#endif
+
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+	bcm_register_device(&sondbox_gpio_keys);
 #endif
 }
 
@@ -1098,6 +1211,60 @@ static struct gpio_led bcm2709_leds[] = {
 	       .default_trigger = "mmc0",
 	       .active_low = 1,
 	       },
+	{
+		.gpio = 5,
+		.name = "-3dB",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 6,
+		.name = "-20dB",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 13,
+		.name = "-40dB",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 12,
+		.name = "web",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 22,
+		.name = "switch_pad",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 27,
+		.name = "pad",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 7,
+		.name = "line",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 8,
+		.name = "mic",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
+	{
+		.gpio = 24,
+		.name = "onair",
+		.default_trigger = "none",
+		.active_low = 0,
+	},
 };
 
 static struct gpio_led_platform_data bcm2709_led_pdata = {
