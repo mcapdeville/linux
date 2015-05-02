@@ -519,6 +519,9 @@ static int at24_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		 * is recommended anyhow.
 		 */
 		chip.page_size = 1;
+		if(!strncmp(id->name,"24c64",5)){
+			chip.page_size = 32;
+		}
 
 		/* update chipdata if OF is present */
 		at24_get_ofdata(client, &chip);
