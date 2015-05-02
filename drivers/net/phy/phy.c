@@ -814,6 +814,11 @@ void phy_state_machine(struct work_struct *work)
 			phydev->state = PHY_RUNNING;
 			netif_carrier_on(phydev->attached_dev);
 			phydev->adjust_link(phydev->attached_dev);
+		} else if (0 == phydev->link_timeout--) {
+			/* If we have the magic_aneg bit,
+			 * we try again */
+			if (phydev->drv->flags & PHY_HAS_MAGICANEG)
+				needs_aneg = 1;
 		}
 		break;
 	case PHY_FORCING:
