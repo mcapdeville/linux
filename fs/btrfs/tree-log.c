@@ -1010,7 +1010,7 @@ again:
 		base = btrfs_item_ptr_offset(leaf, path->slots[0]);
 
 		while (cur_offset < item_size) {
-			extref = (struct btrfs_inode_extref *)base + cur_offset;
+			extref = (struct btrfs_inode_extref *)(base + cur_offset);
 
 			victim_name_len = btrfs_inode_extref_name_len(leaf, extref);
 
@@ -1266,21 +1266,13 @@ out:
 }
 
 static int insert_orphan_item(struct btrfs_trans_handle *trans,
-			      struct btrfs_root *root, u64 offset)
+			      struct btrfs_root *root, u64 ino)
 {
 	int ret;
-	struct btrfs_path *path;
 
-	path = btrfs_alloc_path();
-	if (!path)
-		return -ENOMEM;
-
-	ret = btrfs_find_item(root, path, BTRFS_ORPHAN_OBJECTID,
-			offset, BTRFS_ORPHAN_ITEM_KEY, NULL);
-	if (ret > 0)
-		ret = btrfs_insert_orphan_item(trans, root, offset);
-
-	btrfs_free_path(path);
+	ret = btrfs_insert_orphan_item(trans, root, ino);
+	if (ret == -EEXIST)
+		ret = 0;
 
 	return ret;
 }

@@ -985,6 +985,7 @@ struct vlv_s0ix_state {
 	/* Display 2 CZ domain */
 	u32 gu_ctl0;
 	u32 gu_ctl1;
+	u32 pcbr;
 	u32 clock_gate_dis2;
 };
 
@@ -1781,6 +1782,11 @@ static inline struct drm_i915_private *to_i915(const struct drm_device *dev)
 	return dev->dev_private;
 }
 
+static inline struct drm_i915_private *dev_to_i915(struct device *dev)
+{
+	return to_i915(dev_get_drvdata(dev));
+}
+
 /* Iterate over initialised rings */
 #define for_each_ring(ring__, dev_priv__, i__) \
 	for ((i__) = 0; (i__) < I915_NUM_RINGS; (i__)++) \
@@ -2160,6 +2166,7 @@ struct drm_i915_cmd_table {
 				 (INTEL_DEVID(dev) & 0xFF00) == 0x0C00)
 #define IS_BDW_ULT(dev)		(IS_BROADWELL(dev) && \
 				 ((INTEL_DEVID(dev) & 0xf) == 0x6 ||	\
+				 (INTEL_DEVID(dev) & 0xf) == 0xb ||	\
 				 (INTEL_DEVID(dev) & 0xf) == 0xe))
 #define IS_BDW_GT3(dev)		(IS_BROADWELL(dev) && \
 				 (INTEL_DEVID(dev) & 0x00F0) == 0x0020)
