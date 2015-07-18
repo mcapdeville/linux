@@ -222,7 +222,7 @@ fail:
 static void
 isert_free_rx_descriptors(struct isert_conn *isert_conn)
 {
-	struct ib_device *ib_dev = isert_conn->conn_cm_id->device;
+	struct ib_device *ib_dev = isert_conn->conn_device->ib_device;
 	struct iser_rx_desc *rx_desc;
 	int i;
 
@@ -719,8 +719,8 @@ out:
 static void
 isert_connect_release(struct isert_conn *isert_conn)
 {
-	struct ib_device *ib_dev = isert_conn->conn_cm_id->device;
 	struct isert_device *device = isert_conn->conn_device;
+	struct ib_device *ib_dev = device->ib_device;
 
 	isert_dbg("conn %p\n", isert_conn);
 
@@ -728,7 +728,8 @@ isert_connect_release(struct isert_conn *isert_conn)
 		isert_conn_free_fastreg_pool(isert_conn);
 
 	isert_free_rx_descriptors(isert_conn);
-	rdma_destroy_id(isert_conn->conn_cm_id);
+	if (isert_conn->conn_cm_id)
+		rdma_destroy_id(isert_conn->conn_cm_id);
 
 	if (isert_conn->conn_qp) {
 		struct isert_comp *comp = isert_conn->conn_qp->recv_cq->cq_context;
@@ -878,12 +879,15 @@ isert_disconnected_handler(struct rdma_cm_id *cma_id,
 	return 0;
 }
 
-static void
+static int
 isert_connect_error(struct rdma_cm_id *cma_id)
 {
 	struct isert_conn *isert_conn = cma_id->qp->qp_context;
 
+	isert_conn->conn_cm_id = NULL;
 	isert_put_conn(isert_conn);
+
+	return -1;
 }
 
 static int
@@ -912,7 +916,7 @@ isert_cma_handler(struct rdma_cm_id *cma_id, struct rdma_cm_event *event)
 	case RDMA_CM_EVENT_REJECTED:       /* FALLTHRU */
 	case RDMA_CM_EVENT_UNREACHABLE:    /* FALLTHRU */
 	case RDMA_CM_EVENT_CONNECT_ERROR:
-		isert_connect_error(cma_id);
+		ret = isert_connect_error(cma_id);
 		break;
 	default:
 		isert_err("Unhandled RDMA CMA event: %d\n", event->event);
@@ -1861,11 +1865,13 @@ isert_completion_rdma_read(struct iser_tx_desc *tx_desc,
 	cmd->i_state = ISTATE_RECEIVED_LAST_DATAOUT;
 	spin_unlock_bh(&cmd->istate_lock);
 
-	if (ret)
+	if (ret) {
+		target_put_sess_cmd(se_cmd->se_sess, se_cmd);
 		transport_send_check_condition_and_sense(se_cmd,
 							 se_cmd->pi_err, 0);
-	else
+	} else {
 		target_execute_cmd(se_cmd);
+	}
 }
 
 static void
@@ -2310,7 +2316,6 @@ isert_build_rdma_wr(struct isert_conn *isert_conn, struct isert_cmd *isert_cmd,
 	page_off = offset % PAGE_SIZE;
 
 	send_wr->sg_list = ib_sge;
-	send_wr->num_sge = sg_nents;
 	send_wr->wr_id = (uintptr_t)&isert_cmd->tx_desc;
 	/*
 	 * Perform mapping of TCM scatterlist memory ib_sge dma_addr.
@@ -2330,14 +2335,17 @@ isert_build_rdma_wr(struct isert_conn *isert_conn, struct isert_cmd *isert_cmd,
 			  ib_sge->addr, ib_sge->length, ib_sge->lkey);
 		page_off = 0;
 		data_left -= ib_sge->length;
+		if (!data_left)
+			break;
 		ib_sge++;
 		isert_dbg("Incrementing ib_sge pointer to %p\n", ib_sge);
 	}
 
+	send_wr->num_sge = ++i;
 	isert_dbg("Set outgoing sg_list: %p num_sg: %u from TCM SGLs\n",
 		  send_wr->sg_list, send_wr->num_sge);
 
-	return sg_nents;
+	return send_wr->num_sge;
 }
 
 static int
@@ -3305,6 +3313,7 @@ static void isert_free_conn(struct iscsi_conn *conn)
 {
 	struct isert_conn *isert_conn = conn->context;
 
+	isert_wait4flush(isert_conn);
 	isert_put_conn(isert_conn);
 }
 
