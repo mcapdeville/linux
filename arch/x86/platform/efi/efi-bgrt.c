@@ -15,6 +15,7 @@
 #include <linux/acpi.h>
 #include <linux/efi.h>
 #include <linux/efi-bgrt.h>
+#include <linux/dmi.h>
 
 struct acpi_table_bgrt *bgrt_tab;
 void *__initdata bgrt_image;
@@ -25,12 +26,34 @@ struct bmp_header {
 	u32 size;
 } __packed;
 
+static int __init set_status_bit(const struct dmi_system_id *d)
+{
+	bgrt_tab->status = 1;
+	pr_info("%s series board detected. forcing bgrt->status to 1.\n",
+		d->ident);
+
+	return 0;
+}
+
+static struct dmi_system_id __initdata bgrt_dmi_table[] = {
+	/* ASUS */
+	{	/* Handle problems with rebooting on ASUS T100TA */
+		.callback = set_status_bit,
+		.ident = "ASUS T100TA",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "ASUSTeK COMPUTER INC."),
+			DMI_MATCH(DMI_BOARD_NAME, "T100TA"),
+		},
+	},
+};
+
 void __init efi_bgrt_init(void)
 {
 	acpi_status status;
-	void __iomem *image;
+	void __iomem *image=NULL;
 	bool ioremapped = false;
 	struct bmp_header bmp_header;
+	int rv;
 
 	if (acpi_disabled)
 		return;
@@ -39,6 +62,8 @@ void __init efi_bgrt_init(void)
 	                        (struct acpi_table_header **)&bgrt_tab);
 	if (ACPI_FAILURE(status))
 		return;
+
+	rv=dmi_check_system(bgrt_dmi_table);
 
 	if (bgrt_tab->header.length < sizeof(*bgrt_tab)) {
 		pr_err("Ignoring BGRT: invalid length %u (expected %zu)\n",
@@ -65,7 +90,9 @@ void __init efi_bgrt_init(void)
 		return;
 	}
 
-	image = efi_lookup_mapped_addr(bgrt_tab->image_address);
+	if (!rv)
+		image = efi_lookup_mapped_addr(bgrt_tab->image_address);
+
 	if (!image) {
 		image = early_ioremap(bgrt_tab->image_address,
 				       sizeof(bmp_header));
