@@ -246,6 +246,9 @@ int intel_pmic_install_opregion_handler(struct device *dev, acpi_handle handle,
 	}
 
 	opregion->data = d;
+
+	acpi_walk_dep_device_list(handle);
+
 	return 0;
 
 out_error:
