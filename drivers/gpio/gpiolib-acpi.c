@@ -643,6 +643,8 @@ static void acpi_gpiochip_request_regions(struct acpi_gpio_chip *achip)
 						    NULL, achip);
 	if (ACPI_FAILURE(status))
 		dev_err(chip->dev, "Failed to install GPIO OpRegion handler\n");
+
+	acpi_walk_dep_device_list(handle);
 }
 
 static void acpi_gpiochip_free_regions(struct acpi_gpio_chip *achip)
