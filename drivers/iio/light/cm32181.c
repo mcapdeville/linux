@@ -311,7 +311,9 @@ static int cm32181_probe(struct i2c_client *client,
 {
 	struct cm32181_chip *cm32181;
 	struct iio_dev *indio_dev;
+#ifdef CONFIG_I2C_SMBUS
 	struct i2c_smbus_alert_setup ara_setup;
+#endif
 	int ret;
 
 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*cm32181));
