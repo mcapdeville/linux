@@ -1,0 +1,156 @@
+// Sondox device tree specific
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2708","brcm,bcm2709","brcm,bcm2710";
+	fragment@0 {
+		target = <&leds>;
+		__overlay__ {
+			3db {
+				label = "-3dB";
+				gpios = <&gpio 5 0>;
+			};
+
+			20db {
+				label = "-20dB";
+				gpios = <&gpio 6 0>;
+			};
+
+			40db {
+				label = "-40dB";
+				gpios = <&gpio 13 0>;
+			};
+
+			web {
+				label = "web";
+				gpios = <&gpio 12 0>;
+			};
+
+			switch_pad {
+				label = "switch_pad";
+				gpios = <&gpio 22 0>;
+			};
+
+			pad {
+				label = "pad";
+				gpios = <&gpio 27 0>;
+			};
+
+			line {
+				label = "line";
+				gpios = <&gpio 7 0>;
+			};
+
+			mic {
+				label = "mic";
+				gpios = <&gpio 8 0>;
+			};
+
+			onair {
+				label = "onair";
+				gpios = <&gpio 24 0>;
+			};
+		};
+	};
+
+	fragment@1 {
+		target-path = "/soc";
+		__overlay__ {
+			keypad {
+				compatible = "gpio-keys";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&keypad_pins>;
+				
+				att_20db {
+					label = "Att -20dB";
+					linux,code = <30>;
+					gpios = <&gpio 4 0>;
+				};
+
+				input {
+					label = "Input select";
+					linux,code = <23>;
+					gpios = <&gpio 25 0>;
+				};
+
+				vol_up {
+					label = "Volume up";
+					linux,code = <25>;
+					gpios = <&gpio 26 0>;
+				};
+
+				vol_dwn {
+					label = "Volume down";
+					linux,code = <50>;
+					gpios = <&gpio 16 0>;
+				};
+
+				onair {
+					label = "On air";
+					linux,code = <24>;
+					gpios = <&gpio 23 0>;
+				};
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&gpio>;
+		__overlay__ {
+			keypad_pins: keypad_pins {
+				brcm,pins = <4 25 26 16 23>;
+				brcm,pull = <1 0 0 0 0>;
+				brcm,function = <0>;
+			};
+
+			leds_pins: leds_pins {
+				brcm,pins = <5 6 13 12 22 27 7 8 24>;
+				brcm,pull = <0>;
+				brcm,function = <1>;
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&i2s>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@4 {
+		target = <&sound>;
+		__overlay__ {
+			compatible = "lesondier,sondbox-adc";
+			i2s-controller = <&i2s>;
+			sound-dai = <&wm8737>;
+			status = "okay";
+		};
+	};
+
+	fragment@5 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			wm8737: wm8737@1A {
+				#sound-dai-cells = <0>;
+				compatible = "wlf,wm8737";
+				reg = <0x1A>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@6 {
+		target = <&audio>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+};
