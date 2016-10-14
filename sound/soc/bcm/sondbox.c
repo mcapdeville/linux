@@ -66,6 +66,11 @@ static struct snd_pcm_hw_constraint_list wm8737_constraints_12000000 = {
     .count = ARRAY_SIZE(wm8737_rates_12000000),
 };
 
+static int sondbox_init(struct snd_soc_pcm_runtime *rtd)
+{
+	return 0;
+}
+
 static int sondbox_startup(struct snd_pcm_substream *substream)
 {
     snd_pcm_hw_constraint_list(substream->runtime, 0,
@@ -106,6 +111,7 @@ static int sondbox_hw_params(struct snd_pcm_substream *substream,
     return 0;
 }
 
+
 /* machine stream operations */
 static struct snd_soc_ops sondbox_ops = {
     .startup = sondbox_startup,
@@ -114,7 +120,7 @@ static struct snd_soc_ops sondbox_ops = {
 
 static struct snd_soc_dai_link sondbox_dai[] = {
 {
-    .name = "WM8737",
+    .name = "sondbox-adc",
     .stream_name = "Capture",
     .cpu_dai_name = "bcm2708-i2s.0",
     .codec_dai_name = "wm8737",
@@ -124,12 +130,13 @@ static struct snd_soc_dai_link sondbox_dai[] = {
              | SND_SOC_DAIFMT_NB_NF
              | SND_SOC_DAIFMT_CBM_CFM,
     .ops = &sondbox_ops,
+    .init = sondbox_init,
 },
 };
 
 /* audio machine driver */
 static struct snd_soc_card sondbox = {
-    .name = "sondbox",
+    .name = "sondbox-adc",
     .dai_link = sondbox_dai,
     .num_links = ARRAY_SIZE(sondbox_dai),
 };
@@ -138,7 +145,33 @@ static int sondbox_probe(struct platform_device *pdev) {
     int ret = 0;
 
     sondbox.dev = &pdev->dev;
+	
+    if (pdev->dev.of_node) {
+        struct device_node *i2s_node;
+        struct device_node *codec_node;
+        struct snd_soc_dai_link *dai = &sondbox_dai[0];
+        i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
+
+        if (i2s_node) {
+            dai->cpu_dai_name = NULL;
+            dai->cpu_of_node = i2s_node;
+            dai->platform_name = NULL;
+            dai->platform_of_node = i2s_node;
+        }
+
+        codec_node = of_parse_phandle(pdev->dev.of_node, "sound-dai", 0);
+
+        if (codec_node) {
+            dai->codec_name = NULL;
+            dai->codec_of_node = codec_node;
+	    ret = snd_soc_of_get_dai_name(pdev->dev.of_node, &dai->codec_dai_name);
+	    if (ret < 0)
+	    	return ret;
+        }
+    }
+
     ret = snd_soc_register_card(&sondbox);
+    
     if (ret)
         dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
 
@@ -159,7 +192,7 @@ MODULE_DEVICE_TABLE(of, sondbox_of_match);
 
 static struct platform_driver sondbox_driver = {
     .driver = {
-        .name = "snd-rpi-dac",
+        .name = "sondbox-adc",
         .owner = THIS_MODULE,
 	.of_match_table = sondbox_of_match,
     },
