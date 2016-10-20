@@ -127,6 +127,7 @@
 			compatible = "lesondier,sondbox-adc";
 			i2s-controller = <&i2s>;
 			sound-dai = <&wm8737>;
+			sysclk = <12288000>;
 			status = "okay";
 		};
 	};

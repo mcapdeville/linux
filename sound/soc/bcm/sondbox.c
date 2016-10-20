@@ -21,6 +21,11 @@
 #include <sound/soc.h>
 #include <sound/jack.h>
 
+#define SONDBOX_DEF_SYSCLK	12288000
+static int sysclk = -1;
+module_param_named(sysclk, sysclk, int, 0444);
+MODULE_PARM_DESC(sysclk, "-1:12288000Hz(default)");
+
 static const unsigned int wm8737_rates_12288000[] = {
     8000, 12000, 16000, 24000, 32000, 48000, 96000,
 };
@@ -73,10 +78,39 @@ static int sondbox_init(struct snd_soc_pcm_runtime *rtd)
 
 static int sondbox_startup(struct snd_pcm_substream *substream)
 {
-    snd_pcm_hw_constraint_list(substream->runtime, 0,
-                SNDRV_PCM_HW_PARAM_RATE,
-                &wm8737_constraints_12288000);
 
+	switch(sysclk) {
+		case 12288000:
+		case 12288000*2:
+		    snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				&wm8737_constraints_12288000);
+		    break;
+		case 11289600:
+		case 11289600*2:
+		    snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				&wm8737_constraints_11289600);
+		    break;
+		case 18432000:
+		case 18432000*2:
+		    snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				&wm8737_constraints_18432000);
+		    break;
+		case 16934400:
+		case 16934400*2:
+		    snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				&wm8737_constraints_16934400);
+		    break;
+		case 12000000:
+		case 12000000*2:
+		    snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				&wm8737_constraints_12000000);
+		    break;
+	}
     // start the bcm gpc
 
 
@@ -90,12 +124,11 @@ static int sondbox_hw_params(struct snd_pcm_substream *substream,
     struct snd_soc_pcm_runtime *rtd = substream->private_data;
     struct snd_soc_dai *codec_dai = rtd->codec_dai;
     struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-    int sysclk = 12288000;
     unsigned int sample_bits = snd_pcm_format_physical_width(
                                                   params_format(params));
 
     /* Set proto bclk */
-    int ret = snd_soc_dai_set_bclk_ratio(cpu_dai, sample_bits*2);
+    int ret = snd_soc_dai_set_bclk_ratio(cpu_dai, 64);
     if (ret < 0){
         // dev_err(substream->pcm->dev, "Failed to set BCLK ratio %d\n", ret);
         return ret;
@@ -167,6 +200,10 @@ static int sondbox_probe(struct platform_device *pdev) {
 	    ret = snd_soc_of_get_dai_name(pdev->dev.of_node, &dai->codec_dai_name);
 	    if (ret < 0)
 	    	return ret;
+        }
+	if (sysclk==-1) {
+		if (of_property_read_u32(pdev->dev.of_node, "sysclk", &sysclk))
+			sysclk=SONDBOX_DEF_SYSCLK;
         }
     }
 
