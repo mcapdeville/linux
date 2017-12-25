@@ -659,6 +659,48 @@ struct i2c_client *i2c_setup_smbus_alert(struct i2c_adapter *adapter,
 }
 EXPORT_SYMBOL_GPL(i2c_setup_smbus_alert);
 
+/**
+ * i2c_require_smbus_alert - Client discovered SMBus alert
+ * @client: client requiring ARA support
+ *
+ * When a client needs an ARA it calls this method. If the bus adapter
+ * supports ARA and already knows how to do so then it will already have
+ * configured for ARA and this is a no-op. If not then we set up an ARA
+ * on the adapter.
+ *
+ * Return:
+ *	0 if ARA support already registered
+ *	1 if call register a new smbus_alert device
+ *	<0 on error
+ */
+int i2c_require_smbus_alert(struct i2c_client *client)
+{
+	struct i2c_adapter *adapter = client->adapter;
+	struct i2c_smbus_alert_setup setup;
+	struct i2c_client *ara;
+	int ret;
+
+	if (adapter->smbus_ara) {
+		/*
+		 * ARA is already known and handled by the adapter (ideal case)
+		 * or another client has specified ARA is needed
+		 */
+		ret = 0;
+	} else {
+		/* First client requesting alert and no adapter has
+		 * has setup one
+		 */
+		setup.irq = 0;
+		ara = i2c_setup_smbus_alert(adapter, &setup);
+		if (!ara)
+			return -ENODEV;
+		ret = 1;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(i2c_require_smbus_alert);
+
 #if IS_ENABLED(CONFIG_I2C_SMBUS) && IS_ENABLED(CONFIG_OF)
 int of_i2c_setup_smbus_alert(struct i2c_adapter *adapter)
 {

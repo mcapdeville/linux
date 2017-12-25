@@ -47,6 +47,7 @@ struct i2c_smbus_alert_setup {
 
 struct i2c_client *i2c_setup_smbus_alert(struct i2c_adapter *adapter,
 					 struct i2c_smbus_alert_setup *setup);
+int i2c_require_smbus_alert(struct i2c_client *client);
 int i2c_handle_smbus_alert(struct i2c_client *ara);
 
 #if IS_ENABLED(CONFIG_I2C_SMBUS) && IS_ENABLED(CONFIG_OF)
@@ -55,6 +56,27 @@ int of_i2c_setup_smbus_alert(struct i2c_adapter *adap);
 static inline int of_i2c_setup_smbus_alert(struct i2c_adapter *adap)
 {
 	return 0;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_I2C_SMBUS)
+int i2c_smbus_alert_add_irq(struct i2c_client *client, int irq);
+int i2c_smbus_alert_free_irq(struct i2c_client *client, int irq);
+int i2c_smbus_alert_event(struct i2c_client *client);
+#else
+static inline int i2c_smbus_alert_add_irq(struct i2c_client *client, int irq)
+{
+	return -EINVAL;
+}
+
+static inline int i2c_smbus_alert_free_irq(struct i2c_client *client, int irq)
+{
+	return -EINVAL;
+}
+
+static inline int i2c_smbus_alert_event(struct i2c_client *client)
+{
+	return -EINVAL;
 }
 #endif
 

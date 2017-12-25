@@ -652,6 +652,8 @@ struct i2c_adapter {
 	const struct i2c_adapter_quirks *quirks;
 
 	struct irq_domain *host_notify_domain;
+
+	struct i2c_client *smbus_ara;	/* ARA client address if any or NULL */
 };
 #define to_i2c_adapter(d) container_of(d, struct i2c_adapter, dev)
 

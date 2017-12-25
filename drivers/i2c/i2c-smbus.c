@@ -25,9 +25,16 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 
+struct i2c_smbus_irq_usage {
+	struct list_head	list;
+	int			irq;
+	int			count;
+};
+
 struct i2c_smbus_alert {
 	struct work_struct	alert;
 	struct i2c_client	*ara;		/* Alert response address */
+	struct list_head	irq_usage;	/* irq usage list */
 };
 
 struct alert_data {
@@ -126,6 +133,124 @@ static void smbalert_work(struct work_struct *work)
 
 }
 
+/**
+ * i2c_smbus_alert_add_irq - Add a new irq handler to ARA client
+ * @client: The client which want to add an smbus alert irq handler
+ * @irq: The irq number to be added to the smbus alert device
+ * return: 0 if irq handler already exist, 1 if a new handler has been
+ *	   registered, <0 on error
+ *
+ * This is used by the smbalert_probe and by smbus client to check if an
+ * irq handler already exist for that irq and if not register a new one
+ * Clients must free their irq with i2c_smbus_alert_free_irq() on driver
+ * detach.
+ */
+int i2c_smbus_alert_add_irq(struct i2c_client *client, int irq)
+{
+	int res;
+	struct i2c_smbus_irq_usage *irq_usage;
+	struct i2c_client *ara;
+	struct i2c_smbus_alert *alert;
+
+	ara = client->adapter->smbus_ara;
+	if (!ara)
+		return -EINVAL;
+
+	alert = i2c_get_clientdata(client->adapter->smbus_ara);
+	if (!alert)
+		return -EINVAL;
+
+	if (!irq)
+		return 0;
+
+	/* Check if handler exist for that irq */
+	list_for_each_entry(irq_usage, &alert->irq_usage, list)
+		if (irq_usage->irq == irq)
+			break;
+
+	if (irq_usage->irq == irq) {
+		irq_usage->count++;
+	} else {
+		/* setup a new handler for that irq */
+		res = devm_request_threaded_irq(&ara->dev, irq,
+						NULL, smbus_alert,
+						IRQF_SHARED | IRQF_ONESHOT,
+						"smbus_alert", alert);
+		if (res)
+			return res;
+
+		/* Add adapter irq number to used irq list with a count of 1 */
+		irq_usage = devm_kmalloc(&ara->dev,
+					 sizeof(struct i2c_smbus_irq_usage),
+					 GFP_KERNEL);
+		INIT_LIST_HEAD(&irq_usage->list);
+		irq_usage->irq = irq;
+		irq_usage->count = 1;
+		list_add(&irq_usage->list, &alert->irq_usage);
+
+		return 0;
+	}
+
+	return 1;
+}
+EXPORT_SYMBOL_GPL(i2c_smbus_alert_add_irq);
+
+/**
+ * i2c_smbus_alert_free_irq - free irq added with i2c_smbus_alert_add_irq()
+ * @client: The client which want to free its smbus alert irq
+ * @irq: The irq number to be freed
+ * return: 0 if irq handler still exist for other client,
+ *	   1 if client is the last one using this handler and handler have been
+ *	     removed,
+ *	   <0 on error.
+ *
+ * This is used by smbus clients to free their irq usage from smbus alert
+ * device.
+ */
+int i2c_smbus_alert_free_irq(struct i2c_client *client, int irq)
+{
+	struct i2c_smbus_irq_usage *irq_usage;
+	struct i2c_client *ara;
+	struct i2c_smbus_alert *alert;
+
+	ara = client->adapter->smbus_ara;
+	if (!ara)
+		return -EINVAL;
+
+	alert = i2c_get_clientdata(client->adapter->smbus_ara);
+	if (!alert)
+		return -EINVAL;
+
+	if (!irq)
+		return 0;
+
+	/* Check if handler exist for that irq */
+	list_for_each_entry(irq_usage, &alert->irq_usage, list)
+		if (irq_usage->irq == irq)
+			break;
+
+	if (irq_usage->irq == irq) {
+		irq_usage->count--;
+		if (!irq_usage->count) {
+			/* usage count goes to 0
+			 * so remove irq_usage from list
+			 */
+			list_del(&irq_usage->list);
+			devm_kfree(&ara->dev, irq_usage);
+
+			/* remove irq handler */
+			devm_free_irq(&ara->dev, irq, alert);
+
+			return 1;
+		}
+
+		return 0;
+	}
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(i2c_smbus_alert_free_irq);
+
 /* Setup SMBALERT# infrastructure */
 static int smbalert_probe(struct i2c_client *ara,
 			  const struct i2c_device_id *id)
@@ -151,16 +276,18 @@ static int smbalert_probe(struct i2c_client *ara,
 	INIT_WORK(&alert->alert, smbalert_work);
 	alert->ara = ara;
 
+	INIT_LIST_HEAD(&alert->irq_usage);
+
+	i2c_set_clientdata(ara, alert);
+
+	ara->adapter->smbus_ara = ara;
+
 	if (irq > 0) {
-		res = devm_request_threaded_irq(&ara->dev, irq,
-						NULL, smbus_alert,
-						IRQF_SHARED | IRQF_ONESHOT,
-						"smbus_alert", alert);
+		res = i2c_smbus_alert_add_irq(ara, irq);
 		if (res)
 			return res;
 	}
 
-	i2c_set_clientdata(ara, alert);
 	dev_info(&adapter->dev, "supports SMBALERT#\n");
 
 	return 0;
@@ -172,6 +299,9 @@ static int smbalert_remove(struct i2c_client *ara)
 	struct i2c_smbus_alert *alert = i2c_get_clientdata(ara);
 
 	cancel_work_sync(&alert->alert);
+
+	ara->adapter->smbus_ara = NULL;
+
 	return 0;
 }
 
@@ -209,6 +339,37 @@ int i2c_handle_smbus_alert(struct i2c_client *ara)
 	return schedule_work(&alert->alert);
 }
 EXPORT_SYMBOL_GPL(i2c_handle_smbus_alert);
+
+/**
+ * i2c_smbus_alert_event
+ * @client: the client who known of a probable ARA event
+ * Context: can't sleep
+ *
+ * Helper function to be called from an I2C device driver's interrupt
+ * handler. It will schedule the alert work, in turn calling the
+ * corresponding I2C device driver's alert function.
+ *
+ * It is assumed that client is an i2c client who previously call
+ * i2c_require_smbus_alert().
+ *
+ * return: <0 on error
+ */
+int i2c_smbus_alert_event(struct i2c_client *client)
+{
+	struct i2c_client *ara;
+	struct i2c_smbus_alert *alert;
+
+	ara = client->adapter->smbus_ara;
+	if (!ara)
+		return -EINVAL;
+
+	alert = i2c_get_clientdata(ara);
+	if (!alert)
+		return -EINVAL;
+
+	return schedule_work(&alert->alert);
+}
+EXPORT_SYMBOL_GPL(i2c_smbus_alert_event);
 
 module_i2c_driver(smbalert_driver);
 
