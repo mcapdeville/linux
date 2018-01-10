@@ -59,8 +59,14 @@ static int i2c_acpi_fill_info(struct acpi_resource *ares, void *data)
 	if (sb->type != ACPI_RESOURCE_SERIAL_TYPE_I2C)
 		return 1;
 
-	if (lookup->index != -1 && lookup->n++ != lookup->index)
-		return 1;
+	if (lookup->index != -1) {
+		if (lookup->n++ != lookup->index)
+			return 1;
+	} else {
+		if (lookup->info->flags & I2C_CLIENT_ALERT &&
+		    sb->slave_address == 0x0c)
+			return 1;
+	}
 
 	status = acpi_get_handle(lookup->device_handle,
 				 sb->resource_source.string_ptr,
@@ -85,6 +91,15 @@ static const struct acpi_device_id i2c_acpi_ignored_device_ids[] = {
 	{}
 };
 
+static const struct acpi_device_id i2c_acpi_alert_device_ids[] = {
+	/*
+	 * Smbus alert capable device which may have the reserved ARA address
+	 * in their serial bus resources list.
+	 */
+	{ "CPLM3218", 0 },
+	{}
+};
+
 static int i2c_acpi_do_lookup(struct acpi_device *adev,
 			      struct i2c_acpi_lookup *lookup)
 {
@@ -100,6 +115,10 @@ static int i2c_acpi_do_lookup(struct acpi_device *adev,
 		return -ENODEV;
 
 	memset(info, 0, sizeof(*info));
+
+	if (acpi_match_device_ids(adev, i2c_acpi_alert_device_ids) == 0)
+		info->flags |= I2C_CLIENT_ALERT;
+
 	lookup->device_handle = acpi_device_handle(adev);
 
 	/* Look up for I2cSerialBus resource */
